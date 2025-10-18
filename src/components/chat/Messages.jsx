@@ -7,7 +7,7 @@ import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
-import { use } from 'react';
+// removed unused import 'use' from react
 import { MessageDisplay } from './MessageDisplay';
 import { MessageInput } from './MessageInput';
 import { volunteersAPI } from '../../rest-api/services/volunteers';
@@ -32,7 +32,8 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  const currentUserRaw = sessionStorage.getItem('currentUser');
+  const currentUser = currentUserRaw ? JSON.parse(currentUserRaw) : null;
   const [otherParticipants, setOtherParticipants] = useState([]);
 
   const [chats, setChats] = useState([]); // List of chats for a current user
