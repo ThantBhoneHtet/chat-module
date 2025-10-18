@@ -155,11 +155,21 @@
    =========================== */
 @layer components {
   .animate-card-hover {
-    @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-lg;
+    @apply transition-all duration-300;
+  }
+  .animate-card-hover:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-medium);
   }
 
   .animate-button-hover {
-    @apply transition-all duration-200 hover:scale-105 active:scale-95;
+    @apply transition-all duration-200;
+  }
+  .animate-button-hover:hover {
+    transform: scale(1.05);
+  }
+  .animate-button-hover:active {
+    transform: scale(0.95);
   }
 
   .animate-fade-in {
