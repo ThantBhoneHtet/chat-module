@@ -412,6 +412,20 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
     setEditingMessage(null);
   }
 
+  // Show error if no current user
+  if (!currentUser) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <Card className="w-96">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">No User Found</h2>
+            <p className="text-muted-foreground">Please log in to view messages.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-120px)] flex bg-white rounded-lg shadow-sm border">
       {/* Contacts List */}
