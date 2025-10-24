@@ -431,7 +431,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
     <div className="h-[calc(100vh-120px)] flex bg-white rounded-lg shadow-sm border">
       {/* Contacts List */}
       <div className="w-80 border-r bg-gray-50">
-        <div className="p-4 border-b bg-white">
+        <div className="p-4 border-b bg-white"> 
           <h2 className="text-xl font-bold text-gray-900 mb-3">Messages</h2>
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />

@@ -7,33 +7,26 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "../src/context/AuthContext";
 // import VolunteerProfile from "./components/chat/VolunteerProfile";
 import Messages from "./components/chat/Messages";
+import LoginPage from "./components/chat/LoginPage";
 
 
 const queryClient = new QueryClient();
 
 function App() {
-  // <QueryClientProvider client={queryClient}>
-  //   <TooltipProvider>
-  //     <Toaster />
-  //     <Sonner />
-  //     <BrowserRouter>
-  //       <AuthProvider>
-  //         <Routes>
-  //           {/* <Route path="/volunteer/:id" element={<VolunteerProfile />} /> */}
-  //         </Routes>
-  //       </AuthProvider>
-  //     </BrowserRouter>
-  //   </TooltipProvider>
-  // </QueryClientProvider>
-
   return (
-    <>
-      <main className="flex-1 p-6 overflow-auto">
-          <Messages />
-      </main>
-      
-    </>
-  )
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/chat" element={<Messages />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App
