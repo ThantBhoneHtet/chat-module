@@ -14,7 +14,7 @@ export const authAPI = {
    * @returns {Promise} JWT response
    */
   signup: async (userData) => {
-    const response = await api.post('/signup', userData);
+    const response = await api.post('/api/auth/signup', userData);
     return response.data;
   },
 
@@ -26,7 +26,7 @@ export const authAPI = {
    * @returns {Promise} JWT response
    */
   signin: async (credentials) => {
-    const response = await api.post('/signin', credentials);
+    const response = await api.post('/api/auth/signin', credentials);
     return response.data;
   },
 
@@ -35,7 +35,7 @@ export const authAPI = {
    * @returns {Promise} User data
    */
   getCurrentUser: async () => {
-    const response = await api.get('/api/user/me');
+    const response = await api.get('/api/auth/user/me');
     return response.data;
   }
 };
