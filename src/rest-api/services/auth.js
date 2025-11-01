@@ -1,4 +1,5 @@
 import api from '../config/axios';
+import { jwtDecode } from 'jwt-decode';
 
 /**
  * Authentication API service
@@ -32,10 +33,31 @@ export const authAPI = {
 
   /**
    * Get current user info using JWT token
+   * Decodes JWT to extract email, then fetches user details
    * @returns {Promise} User data
    */
   getCurrentUser: async () => {
-    const response = await api.get('/api/auth/user/me');
-    return response.data;
+    try {
+      // Get JWT token from session storage
+      const token = sessionStorage.getItem('jwtToken');
+      if (!token) {
+        throw new Error('No JWT token found');
+      }
+
+      // Decode JWT to extract email (subject)
+      const decoded = jwtDecode(token);
+      const email = decoded.sub;
+
+      if (!email) {
+        throw new Error('Email not found in JWT token');
+      }
+
+      // Fetch user details from backend using email
+      const response = await api.get(`/api/users/email/${email}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      throw error;
+    }
   }
 };
