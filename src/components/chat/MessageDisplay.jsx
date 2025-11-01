@@ -620,7 +620,7 @@ export function MessageDisplay({ chatId, onMessageReceived, onEditMessage, isGlo
                                         <div className="relative">
                                             <Avatar 
                                               className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all"
-                                            //   onClick={() => navigate(`/volunteer/${message.senderId}`)}
+                                            //   onClick={() => navigate(`/user/${message.senderId}`)}
                                             >
                                                 <AvatarImage src={participants[message.senderId]?.avatarUrl || avatarPlaceholder} />
                                                 <AvatarFallback className="text-xs">

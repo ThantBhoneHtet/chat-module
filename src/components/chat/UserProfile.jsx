@@ -23,7 +23,7 @@ import {
   TrendingUp,
   MessageSquare
 } from 'lucide-react';
-import { volunteersAPI, chatAPI } from '../../rest-api';
+import { usersAPI, chatAPI } from '../../rest-api';
 import { useAuth } from '@/shared/context/AuthContext';
 import { toast } from 'sonner';
 
@@ -41,12 +41,12 @@ const formatDate = (timestamp) => {
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   };
 
-const VolunteerProfile = () => {
-  const { id: volunteerId } = useParams();
+const UserProfile = () => {
+  const { id: userId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { authUser } = useAuth();
   
-  const [volunteer, setVolunteer] = useState(null);
+  const [user, setUser] = useState(null);
   const [feedbacks, setFeedbacks] = useState([]);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [totalHours, setTotalHours] = useState(0);
@@ -55,22 +55,22 @@ const VolunteerProfile = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchVolunteerData = async () => {
+    const fetchUserData = async () => {
       try {
         setLoading(true);
         
-        // Fetch volunteer profile
-        const volunteerData = await volunteersAPI.getProfile(volunteerId);
-        setVolunteer(volunteerData);
+        // Fetch user profile
+        const userData = await usersAPI.getProfile(userId);
+        setUser(userData);
 
         // Fetch completed opportunities
        const completedResponse = await axios.get(
-          `http://localhost:8080/api/opportunities/completed/volunteer/${volunteerId}`
+          `http://localhost:8080/api/opportunities/completed/user/${userId}`
         );
         const completedOpps = completedResponse.data;
 
 
-        // Calculate total hours using the same logic as the volunteer dashboard
+        // Calculate total hours using the same logic as the user dashboard
         const totalHoursCalculated = completedOpps.reduce((sum, opportunity) => {
           let hoursPerWeek = 0;
           const start = convertFirestoreTimestamp(opportunity.startDate);
@@ -98,24 +98,24 @@ const VolunteerProfile = () => {
         setCompletedOpportunities(completedOpps.length);
 
         // Fetch feedbacks
-        const feedbackData = await volunteersAPI.getFeedbacks(volunteerId);
+        const feedbackData = await usersAPI.getFeedbacks(userId);
         const feedbacks = feedbackData?.feedbackDetails ?? [];
         if (feedbacks.length > 0) {
           setFeedbacks(feedbacks);
         }
 
       } catch (err) {
-        setError('Failed to load volunteer profile');
-        console.error('Error fetching volunteer data:', err.response ? err.response.data : err.message);
+        setError('Failed to load user profile');
+        console.error('Error fetching user data:', err.response ? err.response.data : err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (volunteerId) {
-      fetchVolunteerData();
+    if (userId) {
+      fetchUserData();
     }
-  }, [volunteerId]);
+  }, [userId]);
 
   const handleMessageClick = async () => {
     // Check if user is logged in
@@ -126,8 +126,8 @@ const VolunteerProfile = () => {
     }
 
     try {
-      const currentUserId = user?.volunteerId || user?.id;
-      const targetUserId = volunteer.volunteerId || volunteer.id;
+      const currentUserId = authUser?.userId || authUser?.id;
+      const targetUserId = user.userId || user.id;
 
       if (currentUserId === targetUserId) return;
       
@@ -143,7 +143,7 @@ const VolunteerProfile = () => {
         // Chat exists, navigate to messages with existing chat
         const chat = await chatAPI.getChatById(existingChatId);
         // Navigate to dashboard with proper parameters to open Messages section with selected chat
-        navigate('/volunteer/dashboard?section=messages', { 
+        navigate('/user/dashboard?section=messages', { 
           state: { 
             activeSection: 'messages', 
             selectedChatFromColleagues: chat 
@@ -159,7 +159,7 @@ const VolunteerProfile = () => {
         
         const newChat = await chatAPI.createChat(chatRequest);
         // Navigate to dashboard with proper parameters to open Messages section with selected chat
-        navigate('/volunteer/dashboard?section=messages', { 
+        navigate('/user/dashboard?section=messages', { 
           state: { 
             activeSection: 'messages', 
             selectedChatFromColleagues: newChat 
@@ -215,18 +215,18 @@ const VolunteerProfile = () => {
     );
   }
 
-  if (error || !volunteer) {
+  if (error || !user) {
     return (
       <div className="min-h-screen bg-background">
         <main className="pt-20 pb-16">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center py-16">
               <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-4">Volunteer Not Found</h2>
-              <p className="text-muted-foreground mb-8">{error || 'The requested volunteer profile could not be found.'}</p>
-              <Button onClick={() => navigate('/volunteers')}>
+              <h2 className="text-2xl font-bold mb-4">user Not Found</h2>
+              <p className="text-muted-foreground mb-8">{error || 'The requested user profile could not be found.'}</p>
+              <Button onClick={() => navigate('/users')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to All Volunteers
+                Back to All Users
               </Button>
             </div>
           </div>
@@ -242,11 +242,11 @@ const VolunteerProfile = () => {
           {/* Back Button */}
           <Button 
             variant="ghost" 
-            onClick={() => navigate('/volunteers')}
+            onClick={() => navigate('/users')}
             className="mb-6 flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to All Volunteers
+            Back to All Users
           </Button>
 
           {/* Profile Header */}
@@ -257,11 +257,11 @@ const VolunteerProfile = () => {
                 <div className="flex justify-center md:justify-start">
                   <Avatar className="h-32 w-32 border-4 border-primary/20">
                     <AvatarImage 
-                      src={volunteer.avatarUrl} 
-                      alt={`${volunteer.firstName} ${volunteer.lastName}`} 
+                      src={user.avatarUrl} 
+                      alt={`${user.firstName} ${user.lastName}`} 
                     />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-3xl">
-                      {volunteer.firstName.charAt(0)}{volunteer.lastName.charAt(0)}
+                      {user.firstName.charAt(0)}{user.lastName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -269,13 +269,13 @@ const VolunteerProfile = () => {
                 {/* Basic Info */}
                 <div className="flex-1 text-center md:text-left">
                   <h1 className="text-3xl font-bold mb-2">
-                    {volunteer.firstName} {volunteer.lastName}
+                    {user.firstName} {user.lastName}
                   </h1>
                   
-                  {volunteer.location && (
+                  {user.location && (
                     <div className="flex items-center justify-center md:justify-start gap-2 text-muted-foreground mb-4">
                       <MapPin className="h-4 w-4" />
-                      <span>{volunteer.location.city}, {volunteer.location.state}</span>
+                      <span>{user.location.city}, {user.location.state}</span>
                     </div>
                   )}
 
@@ -283,7 +283,7 @@ const VolunteerProfile = () => {
                     <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full">
                       <Star className="h-4 w-4 text-primary fill-primary" />
                       <span className="font-semibold text-primary">
-                        {(volunteer.rating || 0).toFixed(1)} Rating
+                        {(user.rating || 0).toFixed(1)} Rating
                       </span>
                     </div>
                     
@@ -304,22 +304,22 @@ const VolunteerProfile = () => {
 
                 {/* Contact Info & Message Button */}
                  <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-muted-foreground mb-4">
-                   {volunteer.email && (
+                   {user.email && (
                      <div className="flex items-center gap-1">
                        <Mail className="h-3 w-3" />
-                       <span>{volunteer.email}</span>
+                       <span>{user.email}</span>
                      </div>
                    )}
-                   {volunteer.phoneNumber && (
+                   {user.phoneNumber && (
                      <div className="flex items-center gap-1">
                        <Phone className="h-3 w-3" />
-                       <span>{volunteer.phoneNumber}</span>
+                       <span>{user.phoneNumber}</span>
                      </div>
                    )}
-                   {volunteer.joinDate && (
+                   {user.joinDate && (
                      <div className="flex items-center gap-1">
                        <Calendar className="h-3 w-3" />
-                       <span>Joined {new Date(volunteer.joinDate).toLocaleDateString()}</span>
+                       <span>Joined {new Date(user.joinDate).toLocaleDateString()}</span>
                      </div>
                    )}
                  </div>
@@ -341,26 +341,26 @@ const VolunteerProfile = () => {
               </div>
 
               {/* Bio */}
-              {volunteer.bio && (
+              {user.bio && (
                 <>
                   <Separator className="my-6" />
                   <div>
                     <h3 className="font-semibold mb-2">About</h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      {volunteer.bio}
+                      {user.bio}
                     </p>
                   </div>
                 </>
               )}
 
               {/* Skills */}
-              {volunteer.skills && volunteer.skills.length > 0 && (
+              {user.skills && user.skills.length > 0 && (
                 <>
                   <Separator className="my-6" />
                   <div>
                     <h3 className="font-semibold mb-3">Skills & Expertise</h3>
                     <div className="flex flex-wrap gap-2">
-                      {volunteer.skills.map((skill, index) => (
+                      {user.skills.map((skill, index) => (
                         <Badge key={index} variant="secondary" className="px-3 py-1">
                           {skill}
                         </Badge>
@@ -387,12 +387,12 @@ const VolunteerProfile = () => {
                   <span className="text-sm text-muted-foreground">Average Rating</span>
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 text-primary fill-primary" />
-                    <span className="font-semibold">{(volunteer.rating || 0).toFixed(1)}/5.0</span>
+                    <span className="font-semibold">{(user.rating || 0).toFixed(1)}/5.0</span>
                   </div>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total Hours Volunteered</span>
+                  <span className="text-sm text-muted-foreground">Total Hours Usered</span>
                   <span className="font-semibold">{totalHours.toFixed(1)}h</span>
                 </div>
                 
@@ -536,4 +536,4 @@ const VolunteerProfile = () => {
   );
 };
 
-export default VolunteerProfile;
+export default UserProfile;

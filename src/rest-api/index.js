@@ -10,7 +10,7 @@
 // export { organizationsAPI } from './services/organizations';
 // export { skillsApi as skillsAPI } from './services/skills';
 // export { tasksAPI } from './services/tasks';
-export { volunteersAPI } from './services/volunteers';
+export { usersAPI } from './services/users';
 export { messagesAPI, userStatusAPI, chatAPI } from './services/messages';
 export { authAPI } from './services/auth';
 

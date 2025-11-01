@@ -62,60 +62,6 @@ export const chatAPI = {
   }
 };
 
-const dummyMessages = [
-    {
-      id: 1,
-      chatId: '7w8G94enpgJghFLAwtDh',
-      sender: 'Emma Reynolds',
-      content: 'Hi! Thanks for volunteering for our tree planting event.',
-      time: '10:30 AM',
-      isOwn: false
-    },
-    {
-      id: 2,
-      chatId: '7w8G94enpgJghFLAwtDh',
-      sender: 'You',
-      content: 'My pleasure! Looking forward to it.',
-      time: '10:32 AM',
-      isOwn: true
-    },
-    {
-      id: 3,
-      chatId: '7w8G94enpgJghFLAwtDh',
-      sender: 'Emma Reynolds',
-      content: 'Great! Meet us at Central Park entrance at 10 AM sharp.',
-      time: '10:35 AM',
-      isOwn: false
-    },
-    {
-      id: 4,
-      chatId: 'UvCxA9KF681qxUuDmD89',
-      sender: 'You',
-      content: 'Perfect, I\'ll be there!',
-      time: '10:36 AM',
-      isOwn: true
-    }
-  ];
-
-const dummyConversations = [
-  {
-    id: 'conv1',
-    participants: ['eetmUlBvbljDT95ZEOMP', 'org1'],
-    lastMessage: 'Thank you! I am looking forward to contributing to this important cause.',
-    lastMessageTime: '2024-01-13T11:30:00Z',
-    unreadCounts: { eetmUlBvbljDT95ZEOMP: 0, org1: 0 },
-    type: 'direct'
-  }, 
-  {
-    id: 'conv2',
-    participants: ['eetmUlBvbljDT95ZEOMP', 'org3'],
-    lastMessage: 'Nice to meet you',
-    lastMessageTime: '2024-01-13T11:30:00Z',
-    unreadCounts: { eetmUlBvbljDT95ZEOMP: 0, org3: 0 },
-    type: 'direct'
-  }
-];
-
 const websocketAPI = {
   url: 'ws://localhost:8080/chat',
   stompClient: null,

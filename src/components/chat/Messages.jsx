@@ -10,7 +10,7 @@ import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
 // removed unused import 'use' from react
 import { MessageDisplay } from './MessageDisplay';
 import { MessageInput } from './MessageInput';
-import { volunteersAPI } from '../../rest-api/services/volunteers';
+import { usersAPI } from '../../rest-api/services/users';
 import { set } from 'date-fns';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
@@ -71,7 +71,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
               const otherUserId = chat.participants.find(id => id !== currentUser.id);
               if (otherUserId) {
                 try {
-                  const userVol = await volunteersAPI.getProfile(otherUserId);
+                  const userVol = await usersAPI.getProfile(otherUserId);
                   // const userOrg = await organizationsAPI.getProfile(otherUserId);
                   const user = userVol;
                   return {
@@ -471,8 +471,8 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
                    <Avatar 
                      className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all"
                      onClick={() => {
-                      //  if (chat.type === 'DIRECT' && chat.otherParticipant?.userType === 'volunteer') {
-                      //    navigate(`/volunteer/${chat.otherParticipant.id}`);
+                      //  if (chat.type === 'DIRECT' && chat.otherParticipant?.userType === 'user') {
+                      //    navigate(`/user/${chat.otherParticipant.id}`);
                       //  }
                      }}
                    >

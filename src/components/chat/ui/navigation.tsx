@@ -43,7 +43,7 @@ export const Navigation = ({
         {/* Left side - Logo and main nav */}
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-primary">VolunteerHub</span>
+            <span className="text-xl font-bold text-primary">UserHub</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
