@@ -25,6 +25,6 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: "::",
-    port: 8081,
+    port: 8080,
   },
 }))

@@ -12,6 +12,7 @@
 // export { tasksAPI } from './services/tasks';
 export { volunteersAPI } from './services/volunteers';
 export { messagesAPI, userStatusAPI, chatAPI } from './services/messages';
+export { authAPI } from './services/auth';
 
 // Export axios instance for custom API calls
 export { default as api } from './config/axios';

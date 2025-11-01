@@ -8,13 +8,16 @@ import { toast } from "sonner";
 import { authAPI } from "../../rest-api/services/auth";
 import { useAuth } from "../../context/AuthContext";
 
-const LoginPage = () => {
+const SignupPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: ""
   });
 
   const handleChange = (e) => {
@@ -27,17 +30,30 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    // Validation
+    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
       toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await authAPI.signin({
+      const response = await authAPI.signup({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName
       });
 
       // Store JWT token
@@ -47,11 +63,11 @@ const LoginPage = () => {
       const userData = await authAPI.getCurrentUser();
       login(userData);
 
-      toast.success(response.message || "Login successful!");
+      toast.success(response.message || "Registration successful!");
       navigate("/chat");
     } catch (error) {
-      console.error("Login error:", error);
-      const errorMessage = error.response?.data?.message || error.response?.data || "Login failed";
+      console.error("Signup error:", error);
+      const errorMessage = error.response?.data?.message || error.response?.data || "Registration failed";
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -70,13 +86,42 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
           <CardDescription className="text-center">
-            Sign in to your account to continue
+            Enter your information to get started
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -105,8 +150,22 @@ const LoginPage = () => {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                disabled={isLoading}
+                required
+              />
+            </div>
+
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
 
@@ -129,9 +188,9 @@ const LoginPage = () => {
           </div>
 
           <div className="text-center text-sm">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
-              Sign up
+            Already have an account?{" "}
+            <Link to="/" className="text-primary hover:underline font-medium">
+              Sign in
             </Link>
           </div>
         </CardContent>
@@ -140,4 +199,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default SignupPage;
