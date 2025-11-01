@@ -71,9 +71,8 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
               const otherUserId = chat.participants.find(id => id !== currentUser.id);
               if (otherUserId) {
                 try {
-                  const userVol = await usersAPI.getProfile(otherUserId);
-                  // const userOrg = await organizationsAPI.getProfile(otherUserId);
-                  const user = userVol;
+                  const user = await usersAPI.getProfile(otherUserId);
+                  
                   return {
                     ...chat,
                     otherParticipant: {
