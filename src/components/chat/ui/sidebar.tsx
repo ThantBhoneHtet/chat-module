@@ -3,18 +3,18 @@ import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/chat/ui/button"
-import { Input } from "@/components/chat/ui/input"
-import { Separator } from "@/components/chat/ui/separator"
-import { Sheet, SheetContent } from "@/components/chat/ui/sheet"
-import { Skeleton } from "@/components/chat/ui/skeleton"
+import { cn } from "../../../lib/utils"
+import { Button } from "../../chat/ui/button"
+import { Input } from "../../chat/ui/input"
+import { Separator } from "../../chat/ui/separator"
+import { Sheet, SheetContent } from "../../chat/ui/sheet"
+import { Skeleton } from "../../chat/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/chat/ui/tooltip"
+} from "../../chat/ui/tooltip"
 
 // Local hook: responsive mobile detection (replaces missing '@/shared/hooks/use-mobile')
 function useIsMobile() {
