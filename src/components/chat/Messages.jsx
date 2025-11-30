@@ -523,10 +523,10 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
               variant="ghost"
               size="icon"
               onClick={() => setIsAddContactOpen(true)}
-              className="shrink-0 hover:bg-primary/10"
+              className="shrink-0 hover:bg-black/75 rounded-lg bg-black/80"
               title="New Chat"
             >
-              <UserPlus className="h-5 w-5 text-primary" />
+              <UserPlus className="h-5 w-5 text-white" />
             </Button>
           </div>
         </div>
