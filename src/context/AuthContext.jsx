@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }) => {
             toast.success('Logged out successfully!');
 
             // Redirect to login
-            navigate('/login');
+            navigate('/');
 
         } catch (error) {
             console.error('Error during logout:', error);

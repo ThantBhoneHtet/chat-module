@@ -450,11 +450,12 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
               currentUser={currentUser} 
               onOpenSavedMessages={handleOpenSavedMessages}
             />
-            <h2 className="text-xl font-bold text-foreground">Messages</h2>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search conversations..." className="pl-10" />
+            
+          
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search conversations..." className="pl-10" />
+            </div>
           </div>
         </div>
         
