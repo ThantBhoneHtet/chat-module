@@ -41,7 +41,7 @@ const LoginPage = () => {
       });
 
       // Store JWT token
-      sessionStorage.setItem('jwtToken', response.jwtToken);
+      sessionStorage.setItem('jwtToken', response.token);
 
       // Fetch user data and login
       const userData = await authAPI.getCurrentUser();
