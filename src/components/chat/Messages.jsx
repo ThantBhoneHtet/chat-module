@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Image, Send, Paperclip, MoreVertical } from 'lucide-react';
@@ -7,17 +6,14 @@ import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
-// removed unused import 'use' from react
 import { MessageDisplay } from './MessageDisplay';
 import { MessageInput } from './MessageInput';
 import { usersAPI } from '../../rest-api/services/users';
-import { set } from 'date-fns';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
-// import { organizationsAPI } from '../../rest-api';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import avatarPlaceholder from "../../assets/avatar.jpg";
-
+import HamburgerMenu from './HamburgerMenu';
 const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) => {
   // const navigate = useNavigate();
   
@@ -426,14 +422,38 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
     );
   }
 
+  // Handle opening saved messages
+  const handleOpenSavedMessages = async () => {
+    // Find or create saved messages chat for current user
+    // For now, we'll look for an existing saved messages chat
+    const savedChat = chats.find(chat => 
+      chat.type === 'SAVED' || chat.groupName === 'Saved Messages'
+    );
+    
+    if (savedChat) {
+      setSelectedChat(savedChat);
+      const chatIndex = chats.findIndex(chat => chat.chatId === savedChat.chatId);
+      setSelectedContact(chatIndex);
+    } else {
+      // Could create a saved messages chat via API if needed
+      console.log('Saved messages feature - no saved messages chat found');
+    }
+  };
+
   return (
-    <div className="h-[calc(100vh-120px)] flex bg-white rounded-lg shadow-sm border">
+    <div className="h-[calc(100vh-120px)] flex bg-card rounded-lg shadow-sm border">
       {/* Contacts List */}
-      <div className="w-80 border-r bg-gray-50">
-        <div className="p-4 border-b bg-white"> 
-          <h2 className="text-xl font-bold text-gray-900 mb-3">Messages</h2>
+      <div className="w-80 border-r bg-muted/30">
+        <div className="p-4 border-b bg-card"> 
+          <div className="flex items-center gap-2 mb-3">
+            <HamburgerMenu 
+              currentUser={currentUser} 
+              onOpenSavedMessages={handleOpenSavedMessages}
+            />
+            <h2 className="text-xl font-bold text-foreground">Messages</h2>
+          </div>
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search conversations..." className="pl-10" />
           </div>
         </div>
@@ -457,40 +477,31 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
               key={chat.chatId}
               onClick={async () => {
                 setSelectedChat(chat);
-                // await handleChatRoom(chat.chatId);
                 setSelectedContact(index);
-                // await getChatUserStatus(chat);
               }}
-              className={`p-4 border-b cursor-pointer hover:bg-white transition-colors ${
-                selectedContact === index ? 'bg-white border-l-4 border-l-blue-600' : ''
+              className={`p-4 border-b cursor-pointer hover:bg-card transition-colors ${
+                selectedContact === index ? 'bg-card border-l-4 border-l-primary' : ''
               }`}
             >
               <div className="flex items-center space-x-3">
                  <div className="relative">
-                   <Avatar 
-                     className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all"
-                     onClick={() => {
-                      //  if (chat.type === 'DIRECT' && chat.otherParticipant?.userType === 'user') {
-                      //    navigate(`/user/${chat.otherParticipant.id}`);
-                      //  }
-                     }}
-                   >
+                   <Avatar className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
                      <AvatarImage src={chat.type === 'DIRECT' ? chat.otherParticipant?.avatarUrl || chat.otherParticipant?.logoUrl || avatarPlaceholder : ''} />
-                     <AvatarFallback className='bg-blue-200'>{chat.name?.split(' ').map(n => n[0]).join('') || chat.groupName?.split(' ').slice(0, 2).map(n => n[0]).join('')}</AvatarFallback>
+                     <AvatarFallback className='bg-primary/20 text-primary'>{chat.name?.split(' ').map(n => n[0]).join('') || chat.groupName?.split(' ').slice(0, 2).map(n => n[0]).join('')}</AvatarFallback>
                    </Avatar>
                   {(chat.type === 'DIRECT' && userStatuses[chat.otherParticipant?.id]) && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card"></div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-900 truncate">{getChatName(chat) || 'User'}</h3>
-                    <span className="text-xs text-gray-500">{latestMessages[chat.chatId]?.time || ''}</span>
+                    <h3 className="font-medium text-foreground truncate">{getChatName(chat) || 'User'}</h3>
+                    <span className="text-xs text-muted-foreground">{latestMessages[chat.chatId]?.time || ''}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 truncate">{latestMessages[chat.chatId]?.content || latestMessages[chat.chatId]?.attachmentName || 'Say hi to start conversation!'}</p>
+                    <p className="text-sm text-muted-foreground truncate">{latestMessages[chat.chatId]?.content || latestMessages[chat.chatId]?.attachmentName || 'Say hi to start conversation!'}</p>
                     {unreadCounts[chat.chatId] > 0 && (
-                      <span className="bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      <span className="bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCounts[chat.chatId]}
                       </span>
                     )}
@@ -507,7 +518,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
         selectedChat === null && (
           <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-center flex-1 overflow-y-auto p-4 space-y-4">
-              <h2 className="text-xl text-center font-bold text-gray-900 mb-3">Select a chat to start a conversation</h2>
+              <h2 className="text-xl text-center font-bold text-foreground mb-3">Select a chat to start a conversation</h2>
             </div>
           </div>
         )}
@@ -516,18 +527,17 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
         selectedChat && (
           <div className="flex-1 flex flex-col">
         {/* Chat Header */}
-        <div className="p-4 border-b bg-white flex items-center justify-between">
+        <div className="p-4 border-b bg-card flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={selectedChat.groupName?.charAt(0) /* contacts[selectedContact]?.avatar */} />
-              <AvatarFallback>
+              <AvatarImage src={selectedChat.groupName?.charAt(0)} />
+              <AvatarFallback className="bg-primary/20 text-primary">
                 { selectedChat.groupName?.charAt(0) }
-                {/* {contacts[selectedContact]?.name.split(' ').map(n => n[0]).join('')} */}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-medium text-gray-900">{selectedChat.groupName || 'Chat Name'}</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="font-medium text-foreground">{selectedChat.groupName || getChatName(selectedChat) || 'Chat'}</h3>
+              <p className="text-sm text-muted-foreground">
                 {selectedChat.type === 'GROUP' || selectedChat.type === 'GLOBAL' ? (
                   `${onlineCount ?? 'Loading...'} online`
                 ) : (

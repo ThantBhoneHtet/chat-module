@@ -5,14 +5,12 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck } from 'lucide-react';
 import { Button } from './ui/button';
-// import { useToast } from '../../hooks/use-toast';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
-import chatBackground from '../../assets/wallpaperflare.com_wallpaper.jpg';
+import defaultChatBackground from '../../assets/wallpaperflare.com_wallpaper.jpg';
 import avatarPlaceholder from "../../assets/avatar.jpg";
 
 export function MessageDisplay({ chatId, onMessageReceived, onEditMessage, isGloballySubscribed = false, incomingMessage = null, onBottomStateChange = null }) {
-    // const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
     const [participants, setParticipants] = useState({}); // participantsDto for the selected chat
     const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +20,18 @@ export function MessageDisplay({ chatId, onMessageReceived, onEditMessage, isGlo
     const [showNewMessageIndicator, setShowNewMessageIndicator] = useState(false);
     const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
     const [userStatuses, setUserStatuses] = useState({}); // Track online status of users
+    
+    // Chat background state
+    const [chatBackground, setChatBackground] = useState(() => {
+        const savedBackgroundId = localStorage.getItem('chatBackground') || 'default';
+        const savedImages = localStorage.getItem('chatBackgroundImages');
+        if (savedImages) {
+            const images = JSON.parse(savedImages);
+            const selectedImage = images.find(img => img.id === savedBackgroundId);
+            return selectedImage?.url || defaultChatBackground;
+        }
+        return defaultChatBackground;
+    });
     
     // Pagination state
   const [lastMsgId, setLastMsgId] = useState(null);
@@ -577,6 +587,18 @@ export function MessageDisplay({ chatId, onMessageReceived, onEditMessage, isGlo
             return () => document.removeEventListener('click', handleClickOutside);
         }
     }, [contextMenu.show]);
+
+    // Listen for background changes from settings
+    useEffect(() => {
+        const handleBackgroundChange = (event) => {
+            if (event.detail?.backgroundUrl) {
+                setChatBackground(event.detail.backgroundUrl);
+            }
+        };
+        
+        window.addEventListener('chatBackgroundChange', handleBackgroundChange);
+        return () => window.removeEventListener('chatBackgroundChange', handleBackgroundChange);
+    }, []);
 
 
     return (
