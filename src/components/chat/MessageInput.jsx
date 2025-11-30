@@ -2,17 +2,28 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Image, Send, Paperclip, MoreVertical, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
+import { messagesAPI, websocketAPI, chatAPI } from '../../rest-api/services/messages';
+import { toast } from 'sonner';
 
-export function MessageInput({ chatId, onSend, editingMessage, onCancelEdit }) {
+export function MessageInput({ 
+    chatId, 
+    onSend, 
+    editingMessage, 
+    onCancelEdit,
+    isTemporaryChat = false,
+    tempChatData = null,
+    onFirstMessageSent = null,
+    currentUserId = null
+}) {
     const [messageText, setMessageText] = useState('');
     const [attachment, setAttachment] = useState(null);
     const [attachmentPreview, setAttachmentPreview] = useState(null);
+    const [isSending, setIsSending] = useState(false);
     const fileInputRef = useRef(null);
     const imageInputRef = useRef(null);
     
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    const currentUserId = currentUser.id || '';
+    const userId = currentUserId || currentUser?.id || '';
 
     // Populate fields when editing a message
     useEffect(() => {
@@ -61,87 +72,152 @@ export function MessageInput({ chatId, onSend, editingMessage, onCancelEdit }) {
 
     const handleSendMessage = async () => {
         if (!messageText.trim() && !attachment) return;
+        if (isSending) return;
 
-        if (editingMessage) {
-            // Check if content is the same as original
-            const originalContent = editingMessage.content || '';
-            const originalAttachment = editingMessage.attachment || null;
-            
-            if (messageText === originalContent && attachmentPreview === originalAttachment && !attachment) {
-                // No changes, cancel edit
-                onCancelEdit();
-                return;
-            }
+        setIsSending(true);
 
-            let attachmentUrl = originalAttachment;
-
-            // If new attachment is uploaded (not just preview)
-            if (attachment && attachment instanceof File) {
-                const formData = new FormData();
-                formData.append('attachment', attachment);
-
-                try {
-                    attachmentUrl = await messagesAPI.uploadAttachment(chatId, formData);
-                } catch (error) {
-                    console.error('Upload failed:', error);
-                    return;
-                }
-            }
-
-            try {
-                const updatedMessage = await messagesAPI.editMessage(editingMessage.messageId, {
-                    content: messageText,
-                    attachment: attachmentUrl,
-                    attachmentName: attachment?.name || editingMessage.attachmentName
-                });
+        try {
+            if (editingMessage) {
+                // Check if content is the same as original
+                const originalContent = editingMessage.content || '';
+                const originalAttachment = editingMessage.attachment || null;
                 
-                // Clear fields and exit edit mode
-                setMessageText('');
-                setAttachment(null);
-                setAttachmentPreview(null);
-                onCancelEdit();
-            } catch (error) {
-                console.error('Failed to edit message:', error);
-            }
-        } else {
-            // Normal send message logic
-            let attachmentUrl = null;
-
-            if (attachment) {
-                const formData = new FormData();
-                formData.append('attachment', attachment);
-
-                try {
-                    attachmentUrl = await messagesAPI.uploadAttachment(chatId, formData);
-                } catch (error) {
-                    console.error('Upload failed:', error);
+                if (messageText === originalContent && attachmentPreview === originalAttachment && !attachment) {
+                    // No changes, cancel edit
+                    onCancelEdit();
+                    setIsSending(false);
                     return;
                 }
-            }
 
-            const message = {
-                senderId: currentUserId,
-                content: messageText,
-                attachmentUrl: attachmentUrl,
-                attachmentName: attachment?.name
-            };
+                let attachmentUrl = originalAttachment;
 
-            if (websocketAPI.sendMessage(chatId, message)) {
-                setMessageText('');
-                setAttachment(null);
-                setAttachmentPreview(null);
-                if (onSend) onSend(message);
+                // If new attachment is uploaded (not just preview)
+                if (attachment && attachment instanceof File) {
+                    const formData = new FormData();
+                    formData.append('attachment', attachment);
+
+                    try {
+                        attachmentUrl = await messagesAPI.uploadAttachment(chatId, formData);
+                    } catch (error) {
+                        console.error('Upload failed:', error);
+                        setIsSending(false);
+                        return;
+                    }
+                }
+
+                try {
+                    const updatedMessage = await messagesAPI.editMessage(editingMessage.messageId, {
+                        content: messageText,
+                        attachment: attachmentUrl,
+                        attachmentName: attachment?.name || editingMessage.attachmentName
+                    });
+                    
+                    // Clear fields and exit edit mode
+                    setMessageText('');
+                    setAttachment(null);
+                    setAttachmentPreview(null);
+                    onCancelEdit();
+                } catch (error) {
+                    console.error('Failed to edit message:', error);
+                }
+            } else if (isTemporaryChat && tempChatData) {
+                // Handle first message in temporary chat - create real chat first
+                try {
+                    // Create real chat via API
+                    const chatRequest = {
+                        type: 'DIRECT',
+                        participantIds: tempChatData.participants
+                    };
+                    
+                    const newChat = await chatAPI.createChat(chatRequest);
+                    
+                    // Upload attachment if present
+                    let attachmentUrl = null;
+                    if (attachment) {
+                        const formData = new FormData();
+                        formData.append('attachment', attachment);
+                        attachmentUrl = await messagesAPI.uploadAttachment(newChat.chatId, formData);
+                    }
+
+                    // Send message to the new chat
+                    const message = {
+                        senderId: userId,
+                        content: messageText,
+                        attachmentUrl: attachmentUrl,
+                        attachmentName: attachment?.name
+                    };
+
+                    // Connect and send via WebSocket
+                    await websocketAPI.connect();
+                    websocketAPI.sendMessage(newChat.chatId, message);
+
+                    // Clear fields
+                    setMessageText('');
+                    setAttachment(null);
+                    setAttachmentPreview(null);
+
+                    // Enhance chat with other participant info
+                    const enhancedChat = {
+                        ...newChat,
+                        otherParticipant: tempChatData.otherParticipant,
+                        lastMessage: messageText,
+                        lastMessageTime: { seconds: Date.now() / 1000 }
+                    };
+
+                    // Notify parent to replace temp chat with real one
+                    if (onFirstMessageSent) {
+                        onFirstMessageSent(chatId, enhancedChat);
+                    }
+
+                    toast.success('Conversation started!');
+                    
+                } catch (error) {
+                    console.error('Failed to create chat:', error);
+                    toast.error('Failed to start conversation. Please try again.');
+                }
+            } else {
+                // Normal send message logic
+                let attachmentUrl = null;
+
+                if (attachment) {
+                    const formData = new FormData();
+                    formData.append('attachment', attachment);
+
+                    try {
+                        attachmentUrl = await messagesAPI.uploadAttachment(chatId, formData);
+                    } catch (error) {
+                        console.error('Upload failed:', error);
+                        setIsSending(false);
+                        return;
+                    }
+                }
+
+                const message = {
+                    senderId: userId,
+                    content: messageText,
+                    attachmentUrl: attachmentUrl,
+                    attachmentName: attachment?.name
+                };
+
+                if (websocketAPI.sendMessage(chatId, message)) {
+                    setMessageText('');
+                    setAttachment(null);
+                    setAttachmentPreview(null);
+                    if (onSend) onSend(message);
+                }
             }
+        } finally {
+            setIsSending(false);
         }
     };
 
 
     return (
-        <div className="p-4 border-t bg-white">
+        <div className="p-4 border-t bg-card">
             {/* Edit indicator */}
             {editingMessage && (
-                <div className="mb-3 flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                    <span className="text-sm text-blue-700">
+                <div className="mb-3 flex items-center justify-between p-2 bg-primary/10 border border-primary/20 rounded-lg">
+                    <span className="text-sm text-primary">
                         Editing message
                     </span>
                     <Button
@@ -181,18 +257,18 @@ export function MessageInput({ chatId, onSend, editingMessage, onCancelEdit }) {
                     />
                     <button
                         onClick={removeAttachment}
-                        className="absolute top-1 right-1 bg-gray-800 text-white rounded-full p-1 hover:bg-gray-700"
+                        className="absolute top-1 right-1 bg-foreground/80 text-background rounded-full p-1 hover:bg-foreground/70"
                     >
                         ×
                     </button>
                 </div>
             )}
             {attachment && !attachmentPreview && (
-                <div className="relative mb-2 flex items-center gap-2 p-2 bg-gray-100 rounded-lg max-w-xs">
-                    <span className="truncate">{attachment.name}</span>
+                <div className="relative mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg max-w-xs">
+                    <span className="truncate text-foreground">{attachment.name}</span>
                     <button
                         onClick={removeAttachment}
-                        className="text-gray-500 hover:text-gray-700"
+                        className="text-muted-foreground hover:text-foreground"
                     >
                         ×
                     </button>
@@ -205,6 +281,7 @@ export function MessageInput({ chatId, onSend, editingMessage, onCancelEdit }) {
                     variant="ghost" 
                     size="icon"
                     onClick={prepareFileUpload}
+                    disabled={isSending}
                 >
                     <Paperclip className="h-5 w-5" />
                 </Button>
@@ -212,24 +289,30 @@ export function MessageInput({ chatId, onSend, editingMessage, onCancelEdit }) {
                     variant="ghost" 
                     size="icon"
                     onClick={prepareImageUpload}
+                    disabled={isSending}
                 >
                     <Image className="h-5 w-5" />
                 </Button>
                 <div className="flex-1">
                     <Input
-                        placeholder="Type a message..."
+                        placeholder={isTemporaryChat ? "Say something..." : "Type a message..."}
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        className="border-0 bg-gray-100 focus:bg-white"
+                        onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
+                        className="border-0 bg-muted focus:bg-background"
+                        disabled={isSending}
                     />
                 </div>
                 <Button 
                     size="icon"              
                     onClick={handleSendMessage}
-                    disabled={!messageText.trim() && !attachment}
+                    disabled={(!messageText.trim() && !attachment) || isSending}
                 >
-                    <Send className="h-4 w-4" />
+                    {isSending ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                    ) : (
+                        <Send className="h-4 w-4" />
+                    )}
                 </Button>
             </div>
         </div>
