@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Image, Send, Paperclip, MoreVertical } from 'lucide-react';
+import { Search, Image, Send, Paperclip, MoreVertical, UserPlus } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
+import { messagesAPI, websocketAPI, chatAPI } from '../../rest-api/services/messages';
 import { MessageDisplay } from './MessageDisplay';
 import { MessageInput } from './MessageInput';
 import { usersAPI } from '../../rest-api/services/users';
@@ -14,6 +14,8 @@ import userStatusWebSocketService from '../../rest-api/services/userStatusWebSoc
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import avatarPlaceholder from "../../assets/avatar.jpg";
 import HamburgerMenu from './HamburgerMenu';
+import AddContactModal from './AddContactModal';
+import { toast } from 'sonner';
 const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) => {
   // const navigate = useNavigate();
   
@@ -40,6 +42,9 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
   const [incomingMessageForDisplay, setIncomingMessageForDisplay] = useState(null);
   const [userStatuses, setUserStatuses] = useState({}); // Track online status of users
   const [isAtBottom, setIsAtBottom] = useState(true); // Track if user is at bottom of current chat
+
+  // Add Contact Modal state
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
 
 
   // Global chat list subscription for updating latest messages
@@ -440,24 +445,100 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
     }
   };
 
+  // Handle user selection from AddContactModal
+  const handleSelectUser = useCallback(async (selection) => {
+    if (selection.type === 'existing') {
+      // Find existing chat and select it
+      const existingChat = chats.find(chat => chat.chatId === selection.chatId);
+      if (existingChat) {
+        setSelectedChat(existingChat);
+        const chatIndex = chats.findIndex(chat => chat.chatId === selection.chatId);
+        setSelectedContact(chatIndex);
+      } else {
+        // Fetch the chat if not in list
+        try {
+          const chatData = await chatAPI.getChatById(selection.chatId);
+          const enhancedChat = {
+            ...chatData,
+            otherParticipant: {
+              id: selection.user.userId,
+              firstName: selection.user.firstName,
+              lastName: selection.user.lastName,
+              avatarUrl: selection.user.avatarUrl,
+              isOnline: selection.user.isOnline
+            }
+          };
+          setChats(prev => [enhancedChat, ...prev]);
+          setSelectedChat(enhancedChat);
+          setSelectedContact(0);
+        } catch (error) {
+          console.error('Error fetching chat:', error);
+        }
+      }
+    } else {
+      // New temporary chat
+      setSelectedChat(selection.tempChat);
+      setSelectedContact(-1); // Not in the list yet
+    }
+  }, [chats]);
+
+  // Handle first message sent in temporary chat - creates real chat
+  const handleFirstMessageSent = useCallback(async (tempChatId, realChat) => {
+    // Replace temporary chat with real chat in state
+    setChats(prev => {
+      const filteredChats = prev.filter(c => c.chatId !== tempChatId);
+      return [realChat, ...filteredChats];
+    });
+    setSelectedChat(realChat);
+    setSelectedContact(0);
+    
+    // Initialize latest message for the new chat
+    setLatestMessages(prev => ({
+      ...prev,
+      [realChat.chatId]: {
+        content: realChat.lastMessage || '',
+        time: formatTimestamp(realChat.lastMessageTime)
+      }
+    }));
+  }, []);
+
   return (
     <div className="h-[calc(100vh-120px)] flex bg-card rounded-lg shadow-sm border">
       {/* Contacts List */}
       <div className="w-80 border-r bg-muted/30">
         <div className="p-4 border-b bg-card"> 
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2">
             <HamburgerMenu 
               currentUser={currentUser} 
               onOpenSavedMessages={handleOpenSavedMessages}
             />
             
-          
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search conversations..." className="pl-10" />
             </div>
+            
+            {/* Add Contact Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsAddContactOpen(true)}
+              className="shrink-0 hover:bg-primary/10"
+              title="New Chat"
+            >
+              <UserPlus className="h-5 w-5 text-primary" />
+            </Button>
           </div>
         </div>
+        
+        {/* Add Contact Modal */}
+        <AddContactModal
+          open={isAddContactOpen}
+          onOpenChange={setIsAddContactOpen}
+          currentUser={currentUser}
+          onSelectUser={handleSelectUser}
+          existingChats={chats}
+        />
         
         <div className="h-3/4 overflow-y-scroll">
           { isLoading && (
@@ -558,9 +639,11 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
           chatId={selectedChat.chatId} 
           onMessageReceived={updateLatestMessage} 
           onEditMessage={handleEditMessage}
-          isGloballySubscribed={true}
+          isGloballySubscribed={!selectedChat.isTemporary}
           incomingMessage={incomingMessageForDisplay}
           onBottomStateChange={handleBottomStateChange}
+          isTemporaryChat={selectedChat.isTemporary}
+          otherUserName={getChatName(selectedChat)}
         />
 
         {/* Message Input */}
@@ -568,6 +651,10 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
           chatId={selectedChat.chatId} 
           editingMessage={editingMessage}
           onCancelEdit={handleCancelEdit}
+          isTemporaryChat={selectedChat.isTemporary}
+          tempChatData={selectedChat.isTemporary ? selectedChat : null}
+          onFirstMessageSent={handleFirstMessageSent}
+          currentUserId={currentUser.id}
         />
       </div>
       )

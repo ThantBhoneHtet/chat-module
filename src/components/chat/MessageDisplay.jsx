@@ -3,14 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck } from 'lucide-react';
+import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand } from 'lucide-react';
 import { Button } from './ui/button';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
 import defaultChatBackground from '../../assets/wallpaperflare.com_wallpaper.jpg';
 import avatarPlaceholder from "../../assets/avatar.jpg";
+import { motion, AnimatePresence } from 'framer-motion';
 
-export function MessageDisplay({ chatId, onMessageReceived, onEditMessage, isGloballySubscribed = false, incomingMessage = null, onBottomStateChange = null }) {
+export function MessageDisplay({ 
+  chatId, 
+  onMessageReceived, 
+  onEditMessage, 
+  isGloballySubscribed = false, 
+  incomingMessage = null, 
+  onBottomStateChange = null,
+  isTemporaryChat = false,
+  otherUserName = ''
+}) {
     const [messages, setMessages] = useState([]);
     const [participants, setParticipants] = useState({}); // participantsDto for the selected chat
     const [isLoading, setIsLoading] = useState(true);
@@ -617,6 +627,48 @@ export function MessageDisplay({ chatId, onMessageReceived, onEditMessage, isGlo
                         </div>
                     )}
                 </div>
+
+                {/* Say Hi Dialog for empty temporary chats */}
+                <AnimatePresence>
+                    {isTemporaryChat && messages.length === 0 && !isLoading && (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="flex flex-col items-center justify-center h-full"
+                        >
+                            <motion.div 
+                                className="bg-card/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border max-w-sm text-center"
+                                initial={{ y: 20 }}
+                                animate={{ y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <motion.div
+                                    animate={{ 
+                                        rotate: [0, 20, -20, 20, 0],
+                                    }}
+                                    transition={{ 
+                                        duration: 1.5, 
+                                        repeat: Infinity, 
+                                        repeatDelay: 2 
+                                    }}
+                                    className="inline-block mb-4"
+                                >
+                                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Hand className="h-8 w-8 text-primary" />
+                                    </div>
+                                </motion.div>
+                                <h3 className="text-xl font-semibold text-foreground mb-2">
+                                    Say hi to {otherUserName}!
+                                </h3>
+                                <p className="text-muted-foreground text-sm">
+                                    Start a conversation by sending your first message
+                                </p>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {groupMessagesByDate(messages).map((group, groupIndex) => (
                     <div key={groupIndex}>
