@@ -56,8 +56,8 @@ export function MessageDisplay({
     const observerRef = useRef(null);
     const topObserverRef = useRef(null);
     
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    const currentUserId = currentUser.id || '';
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+    const currentUserId = currentUser?.id || '';
 
     const loadMessages = async (lastMessageId = null, isLoadingOlder = false) => {
         try {
@@ -201,6 +201,14 @@ export function MessageDisplay({
     }
    
     useEffect(() => {
+        // Skip API calls for temporary chats
+        if (isTemporaryChat) {
+            setIsLoading(false);
+            setMessages([]);
+            setHasMoreMessages(false);
+            return;
+        }
+
         const fetchMessages = async () => {
             setIsLoading(true);
             setLastMsgId(null);
@@ -216,10 +224,10 @@ export function MessageDisplay({
         };
         fetchMessages();
 
-        // Only subscribe to WebSocket if not globally subscribed by parent
+        // Only subscribe to WebSocket if not globally subscribed by parent and not a temporary chat
         let unsubscribe = null;
         
-        if (!isGloballySubscribed) {
+        if (!isGloballySubscribed && !isTemporaryChat) {
             const handleIncomingMessage = (payload) => {
                 // Only handle messages for the current chat
                 // if (payload.chatId && payload.chatId !== chatId) {
@@ -289,8 +297,8 @@ export function MessageDisplay({
           }));
         };
 
-        // Connect to user status WebSocket and subscribe (only if not globally subscribed)
-        if (!isGloballySubscribed) {
+        // Connect to user status WebSocket and subscribe (only if not globally subscribed and not temporary)
+        if (!isGloballySubscribed && !isTemporaryChat) {
           userStatusWebSocketService.connect()
             .then(() => {
               const statusUnsubscribe = userStatusWebSocketService.addStatusUpdateCallback(handleUserStatusUpdate);
@@ -312,7 +320,7 @@ export function MessageDisplay({
                 unsubscribe();
             }
         };
-    }, [chatId, currentUserId, onMessageReceived, isGloballySubscribed]);
+    }, [chatId, currentUserId, onMessageReceived, isGloballySubscribed, isTemporaryChat]);
 
     // Handle incoming messages from parent component (when globally subscribed)
     useEffect(() => {
