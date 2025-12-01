@@ -221,3 +221,28 @@
   }
 }
 
+/* ===========================
+   Scrollbar Styles
+   =========================== */
+
+/* width */
+::-webkit-scrollbar {
+  width: 8px;  /* ← customize */
+  height: 8px;
+}
+
+/* track */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* handle */
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 9999px;
+}
+
+/* handle hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

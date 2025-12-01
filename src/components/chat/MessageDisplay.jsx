@@ -57,7 +57,7 @@ export function MessageDisplay({
     const topObserverRef = useRef(null);
     
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
-    const currentUserId = currentUser?.id || '';
+    const currentUserId = currentUser?.userId || '';
 
     const loadMessages = async (lastMessageId = null, isLoadingOlder = false) => {
         try {

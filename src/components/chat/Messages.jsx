@@ -54,7 +54,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
     const fetchChats = async () => {
       setIsLoading(true);
       try {
-        const chats = await messagesAPI.getConversations(currentUser.id);
+        const chats = await messagesAPI.getConversations(currentUser.userId);
         const newMessages = {};
         const newUnreadCounts = {};
         
@@ -66,10 +66,10 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
               time: formatTimestamp(chat.lastMessageTime),
             };
             
-            newUnreadCounts[chat.chatId] = chat.unreadCounts[currentUser.id] || 0;
+            newUnreadCounts[chat.chatId] = chat.unreadCounts[currentUser.userId] || 0;
 
             if (chat.type === 'DIRECT') {
-              const otherUserId = chat.participants.find(id => id !== currentUser.id);
+              const otherUserId = chat.participants.find(id => id !== currentUser.userId);
               if (otherUserId) {
                 try {
                   const user = await usersAPI.getProfile(otherUserId);
@@ -136,7 +136,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
                 }
                 
                 // Decrement unread count if deleted message was from another user and was unread
-                if (payload.deletedMessage.senderId !== currentUser.id) {
+                if (payload.deletedMessage.senderId !== currentUser.userId) {
                   setUnreadCounts(prev => ({
                     ...prev,
                     [chat.chatId]: Math.max(0, (prev[chat.chatId] || 0) - 1)
@@ -208,7 +208,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
                 // Update unread count if message is not from current user and either:
                 // 1. Not in the selected chat, OR
                 // 2. In the selected chat but not at bottom (not actively reading)
-                if (payload.senderId !== currentUser.id && 
+                if (payload.senderId !== currentUser.userId && 
                     (!selectedChat || payload.chatId !== selectedChat.chatId || 
                      (payload.chatId === selectedChat.chatId && !isAtBottom))) {
                   setUnreadCounts(prev => ({
@@ -235,7 +235,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
       }
     };
     
-    if (currentUser?.id) { 
+    if (currentUser?.userId) { 
       fetchChats();
     }
     
@@ -284,7 +284,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
         }
       });
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.userId]);
 
   // Handle external chat selection
   useEffect(() => {
@@ -333,7 +333,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
   //   if (!chat || !currentUser) return;
     
   //   try {
-  //     const otherUserIds = chat.participants?.filter(userId => userId !== currentUser.id) || [];
+  //     const otherUserIds = chat.participants?.filter(userId => userId !== currentUser.userId) || [];
   //     if (otherUserIds.length > 0) {
   //       const otherUserStatus = await messagesAPI.getUserStatus(otherUserIds[0]);
   //       setOtherParticipants([otherUserStatus]);
@@ -391,7 +391,9 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
     } else if (chat.type === 'GLOBAL') {
       return 'Global Chat';
     } else {
-      return chat.otherParticipant?.firstName + ' ' + chat.otherParticipant?.lastName;
+      return [chat.otherParticipant?.firstName, chat.otherParticipant?.lastName]
+        .filter(Boolean)
+        .join(' ') || '';
     }
   }
 
@@ -503,10 +505,10 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
   }, []);
 
   return (
-    <div className="h-[calc(100vh-120px)] flex bg-card rounded-lg shadow-sm border">
+    <div className="h-screen flex bg-card rounded-lg shadow-sm border">
       {/* Contacts List */}
-      <div className="w-80 border-r bg-muted/30">
-        <div className="p-4 border-b bg-card"> 
+      <div className="w-80 h-full border-r bg-muted/30">
+        <div className="p-4 h-[15%] border-b bg-card"> 
           <div className="flex items-center gap-2">
             <HamburgerMenu 
               currentUser={currentUser} 
@@ -540,7 +542,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
           existingChats={chats}
         />
         
-        <div className="h-3/4 overflow-y-scroll">
+        <div className="h-[85%] overflow-y-scroll">
           { isLoading && (
             <div className="flex items-center justify-center h-full">              
               <p>Loading your chats...</p>
@@ -612,7 +614,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
         <div className="p-4 border-b bg-card flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={selectedChat.groupName?.charAt(0)} />
+              <AvatarImage src={selectedChat.otherParticipant?.avatarUrl} />
               <AvatarFallback className="bg-primary/20 text-primary">
                 { selectedChat.groupName?.charAt(0) }
               </AvatarFallback>
@@ -654,7 +656,7 @@ const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) 
           isTemporaryChat={selectedChat.isTemporary}
           tempChatData={selectedChat.isTemporary ? selectedChat : null}
           onFirstMessageSent={handleFirstMessageSent}
-          currentUserId={currentUser.id}
+          currentUserId={currentUser.userId}
         />
       </div>
       )

@@ -35,7 +35,7 @@ export function AddContactModal({
     try {
       const results = await usersAPI.getAll({ nameKeyword: query });
       // Filter out current user from results
-      const filteredResults = results.filter(user => user.userId !== currentUser?.id);
+      const filteredResults = results.filter(user => user.userId !== currentUser?.userId);
       setSearchResults(filteredResults);
     } catch (error) {
       console.error('Error searching users:', error);
@@ -43,7 +43,7 @@ export function AddContactModal({
     } finally {
       setIsSearching(false);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.uerId]);
 
   // Throttle effect
   useEffect(() => {
@@ -66,7 +66,7 @@ export function AddContactModal({
   const handleUserClick = async (selectedUser) => {
     // Check if chat already exists between current user and selected user
     try {
-      const existingChatId = await chatAPI.checkChatExists([currentUser.id, selectedUser.userId]);
+      const existingChatId = await chatAPI.checkChatExists([currentUser.userId, selectedUser.userId]);
       
       if (existingChatId) {
         // Chat exists, pass the chatId to open it
@@ -84,7 +84,7 @@ export function AddContactModal({
             chatId: `temp_${Date.now()}`,
             type: 'DIRECT',
             isTemporary: true,
-            participants: [currentUser.id, selectedUser.userId],
+            participants: [currentUser.userId, selectedUser.userId],
             otherParticipant: {
               id: selectedUser.userId,
               firstName: selectedUser.firstName,
@@ -108,7 +108,7 @@ export function AddContactModal({
           chatId: `temp_${Date.now()}`,
           type: 'DIRECT',
           isTemporary: true,
-          participants: [currentUser.id, selectedUser.userId],
+          participants: [currentUser.userId, selectedUser.userId],
           otherParticipant: {
             id: selectedUser.userId,
             firstName: selectedUser.firstName,
