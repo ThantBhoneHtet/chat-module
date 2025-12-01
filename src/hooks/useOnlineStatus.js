@@ -12,7 +12,7 @@ export const useOnlineStatus = () => {
       const currentUser = sessionStorage.getItem('currentUser');
       if (currentUser) {
         const userData = JSON.parse(currentUser);
-        return userData.id;
+        return userData.userId;
       }
     } catch (error) {
       console.error('Error getting user ID:', error);

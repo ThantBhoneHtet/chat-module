@@ -16,7 +16,7 @@ import avatarPlaceholder from "../../assets/avatar.jpg";
 import HamburgerMenu from './HamburgerMenu';
 import AddContactModal from './AddContactModal';
 import { toast } from 'sonner';
-const Messages = ({ trackUserStatus = false, selectedChatFromExternal = null }) => {
+const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) => {
   // const navigate = useNavigate();
   
   if(trackUserStatus) {
