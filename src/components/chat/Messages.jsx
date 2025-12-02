@@ -1,10 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Image, Send, Paperclip, MoreVertical, UserPlus } from 'lucide-react';
+import { Search, Image, Send, Paperclip, MoreVertical, Pencil, UserPlus, Users } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import { messagesAPI, websocketAPI, chatAPI } from '../../rest-api/services/messages';
 import { MessageDisplay } from './MessageDisplay';
 import { MessageInput } from './MessageInput';
@@ -15,7 +21,9 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import avatarPlaceholder from "../../assets/avatar.jpg";
 import HamburgerMenu from './HamburgerMenu';
 import AddContactModal from './AddContactModal';
+import CreateGroupModal from './CreateGroupModal';
 import { toast } from 'sonner';
+
 const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) => {
   // const navigate = useNavigate();
   
@@ -43,8 +51,9 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
   const [userStatuses, setUserStatuses] = useState({}); // Track online status of users
   const [isAtBottom, setIsAtBottom] = useState(true); // Track if user is at bottom of current chat
 
-  // Add Contact Modal state
+  // Modal states
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
 
   // Global chat list subscription for updating latest messages
@@ -520,16 +529,35 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
               <Input placeholder="Search conversations..." className="pl-10" />
             </div>
             
-            {/* Add Contact Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsAddContactOpen(true)}
-              className="shrink-0 hover:bg-black/75 rounded-lg bg-black/80"
-              title="New Chat"
-            >
-              <UserPlus className="h-5 w-5 text-white" />
-            </Button>
+            {/* New Chat Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 hover:bg-primary/90 rounded-lg bg-primary"
+                  title="New Chat"
+                >
+                  <Pencil className="h-5 w-5 text-primary-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
+                <DropdownMenuItem 
+                  onClick={() => setIsAddContactOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  New Contact
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setIsCreateGroupOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  New Group
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         
@@ -540,6 +568,20 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           currentUser={currentUser}
           onSelectUser={handleSelectUser}
           existingChats={chats}
+        />
+        
+        {/* Create Group Modal */}
+        <CreateGroupModal
+          open={isCreateGroupOpen}
+          onOpenChange={setIsCreateGroupOpen}
+          currentUser={currentUser}
+          existingChats={chats}
+          onGroupCreated={(newGroup) => {
+            // Add new group to chats list and select it
+            setChats(prev => [newGroup, ...prev]);
+            setSelectedChat(newGroup);
+            setSelectedContact(0);
+          }}
         />
         
         <div className="h-[85%] overflow-y-scroll">
