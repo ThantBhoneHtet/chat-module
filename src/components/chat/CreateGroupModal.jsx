@@ -105,6 +105,7 @@ export function CreateGroupModal({
       
       const chatRequest = {
         type: 'GROUP',
+        owner: currentUser.userId,
         name: groupName.trim(),
         participantIds: participantIds
       };
