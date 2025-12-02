@@ -59,6 +59,39 @@ export const chatAPI = {
       console.error('Error getting chat by ID:', error);
       throw error;
     }
+  },
+
+  // Get chat participants
+  async getChatParticipants(chatId) {
+    try {
+      const response = await api.get(`/api/chats/${chatId}/participants`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting chat participants:', error);
+      throw error;
+    }
+  },
+
+  // Update chat participants
+  async updateParticipants(chatId, participantIds) {
+    try {
+      const response = await api.put(`/api/chats/${chatId}/update-participants`, participantIds);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating participants:', error);
+      throw error;
+    }
+  },
+
+  // Delete chat
+  async deleteChat(chatId) {
+    try {
+      const response = await api.delete(`/api/chats/${chatId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      throw error;
+    }
   }
 };
 

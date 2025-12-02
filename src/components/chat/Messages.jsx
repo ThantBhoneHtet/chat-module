@@ -22,6 +22,7 @@ import avatarPlaceholder from "../../assets/avatar.jpg";
 import HamburgerMenu from './HamburgerMenu';
 import AddContactModal from './AddContactModal';
 import CreateGroupModal from './CreateGroupModal';
+import ChatEditModal from './ChatEditModal';
 import { toast } from 'sonner';
 
 const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) => {
@@ -54,7 +55,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
   // Modal states
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
-
+  const [isChatEditOpen, setIsChatEditOpen] = useState(false);
 
   // Global chat list subscription for updating latest messages
   useEffect(() => {
@@ -513,6 +514,21 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
     }));
   }, []);
 
+  // Handle chat updated (participants changed)
+  const handleChatUpdated = useCallback((updatedChat) => {
+    setChats(prev => prev.map(c => 
+      c.chatId === updatedChat.chatId ? { ...c, ...updatedChat } : c
+    ));
+    setSelectedChat(prev => prev?.chatId === updatedChat.chatId ? { ...prev, ...updatedChat } : prev);
+  }, []);
+
+  // Handle leaving a chat
+  const handleLeaveChat = useCallback((chatId) => {
+    setChats(prev => prev.filter(c => c.chatId !== chatId));
+    setSelectedChat(null);
+    setSelectedContact(undefined);
+  }, []);
+
   return (
     <div className="h-screen flex bg-card rounded-lg shadow-sm border">
       {/* Contacts List */}
@@ -653,7 +669,10 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
         selectedChat && (
           <div className="flex-1 flex flex-col">
         {/* Chat Header */}
-        <div className="p-4 border-b bg-card flex items-center justify-between">
+        <div 
+          className="p-4 border-b bg-card flex items-center justify-between cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => !selectedChat.isTemporary && setIsChatEditOpen(true)}
+        >
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={selectedChat.otherParticipant?.avatarUrl} />
@@ -672,10 +691,21 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
             <MoreVertical className="h-5 w-5" />
           </Button>
         </div>
+
+        {/* Chat Edit Modal */}
+        <ChatEditModal
+          open={isChatEditOpen}
+          onOpenChange={setIsChatEditOpen}
+          chat={selectedChat}
+          currentUser={currentUser}
+          existingChats={chats}
+          onChatUpdated={handleChatUpdated}
+          onLeaveChat={handleLeaveChat}
+        />
 
         {/* Messages */}
        
