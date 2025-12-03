@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { Users, ImagePlus, X, Loader2 } from 'lucide-react';
+import { Users, ImagePlus, X, Loader2, Search } from 'lucide-react';
 import { chatAPI } from '../../rest-api/services/messages';
+import { usersAPI } from '../../rest-api/services/users';
 import avatarPlaceholder from '../../assets/avatar.jpg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -23,9 +24,45 @@ export function CreateGroupModal({
   const [groupImagePreview, setGroupImagePreview] = useState(null);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Get unique users from existing direct chats
+  // Debounced search for users
+  useEffect(() => {
+    const searchTimeout = setTimeout(async () => {
+      if (searchQuery.trim().length > 0) {
+        setIsSearching(true);
+        try {
+          const results = await usersAPI.searchUsers(searchQuery.trim());
+          // Filter out current user
+          const filtered = (results || []).filter(
+            user => user.userId !== currentUser?.userId
+          );
+          setSearchResults(filtered);
+        } catch (error) {
+          console.error('Error searching users:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery, currentUser?.userId]);
+
+  // Get members to display (search results or existing contacts)
   const availableMembers = useMemo(() => {
+    // If searching, return search results
+    if (searchQuery.trim()) {
+      return searchResults;
+    }
+    
+    // Otherwise, show existing direct chat contacts
     const members = [];
     const seenIds = new Set();
     
@@ -46,7 +83,7 @@ export function CreateGroupModal({
     });
     
     return members;
-  }, [existingChats]);
+  }, [existingChats, searchQuery, searchResults]);
 
   // Handle image selection
   const handleImageChange = (e) => {
@@ -80,6 +117,8 @@ export function CreateGroupModal({
     setGroupImage(null);
     setGroupImagePreview(null);
     setSelectedMembers([]);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   // Handle modal close
@@ -192,7 +231,22 @@ export function CreateGroupModal({
             <p className="text-sm font-medium mb-2">
               Add members ({selectedMembers.length} selected)
             </p>
-            <ScrollArea className="h-[200px] border rounded-lg">
+            
+            {/* Search bar */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+
+            <ScrollArea className="h-[180px] border rounded-lg">
               <AnimatePresence>
                 {availableMembers.length > 0 ? (
                   <div className="p-2 space-y-1">
@@ -233,8 +287,9 @@ export function CreateGroupModal({
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full py-8 text-muted-foreground">
                     <Users className="h-10 w-10 mb-2 opacity-50" />
-                    <p className="text-sm">No contacts available</p>
-                    <p className="text-xs">Start chatting with users first</p>
+                    <p className="text-sm">
+                      {searchQuery ? 'No users found' : 'Search for users to add'}
+                    </p>
                   </div>
                 )}
               </AnimatePresence>

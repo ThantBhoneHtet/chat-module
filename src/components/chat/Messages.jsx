@@ -529,6 +529,24 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
     setSelectedContact(undefined);
   }, []);
 
+  // Handle navigating to a chat from ChatEditModal (when clicking on a member)
+  const handleNavigateToChat = useCallback((chatId, tempChat = null) => {
+    if (chatId) {
+      // Navigate to existing chat
+      const existingChat = chats.find(c => c.chatId === chatId);
+      if (existingChat) {
+        setSelectedChat(existingChat);
+        const chatIndex = chats.findIndex(c => c.chatId === chatId);
+        setSelectedContact(chatIndex);
+      }
+    } else if (tempChat) {
+      // Create temporary chat for new conversation
+      setChats(prev => [tempChat, ...prev]);
+      setSelectedChat(tempChat);
+      setSelectedContact(0);
+    }
+  }, [chats]);
+
   return (
     <div className="h-screen flex bg-card rounded-lg shadow-sm border">
       {/* Contacts List */}
@@ -705,6 +723,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           existingChats={chats}
           onChatUpdated={handleChatUpdated}
           onLeaveChat={handleLeaveChat}
+          onNavigateToChat={handleNavigateToChat}
         />
 
         {/* Messages */}
