@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Image, Send, Paperclip, MoreVertical, X } from 'lucide-react';
+import { Search, Image, Send, Paperclip, MoreVertical, X, Reply, FileText } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { messagesAPI, websocketAPI, chatAPI } from '../../rest-api/services/messages';
@@ -10,6 +10,8 @@ export function MessageInput({
     onSend, 
     editingMessage, 
     onCancelEdit,
+    replyingTo,
+    onCancelReply,
     isTemporaryChat = false,
     tempChatData = null,
     onFirstMessageSent = null,
@@ -196,13 +198,15 @@ export function MessageInput({
                     senderId: userId,
                     content: messageText,
                     attachmentUrl: attachmentUrl,
-                    attachmentName: attachment?.name
+                    attachmentName: attachment?.name,
+                    replyToMessageId: replyingTo?.messageId || null
                 };
 
                 if (websocketAPI.sendMessage(chatId, message)) {
                     setMessageText('');
                     setAttachment(null);
                     setAttachmentPreview(null);
+                    if (onCancelReply) onCancelReply();
                     if (onSend) onSend(message);
                 }
             }
@@ -225,6 +229,51 @@ export function MessageInput({
                         size="sm"
                         onClick={onCancelEdit}
                         className="h-6 w-6 p-0"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+
+            {/* Reply indicator */}
+            {replyingTo && !editingMessage && (
+                <div className="mb-3 flex items-center justify-between p-2 bg-primary/10 border-l-2 border-primary rounded-lg">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Reply className="h-4 w-4 text-primary flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                            <span className="text-xs font-medium text-primary block">
+                                Replying to message
+                            </span>
+                            <div className="flex items-center gap-1">
+                                {replyingTo.attachment && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        {replyingTo.attachment.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                            <>
+                                                <Image className="h-3 w-3" />
+                                                Photo
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FileText className="h-3 w-3" />
+                                                {replyingTo.attachmentName}
+                                            </>
+                                        )}
+                                        {replyingTo.content && ' • '}
+                                    </span>
+                                )}
+                                {replyingTo.content && (
+                                    <span className="text-xs text-muted-foreground truncate">
+                                        {replyingTo.content}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onCancelReply}
+                        className="h-6 w-6 p-0 flex-shrink-0"
                     >
                         <X className="h-4 w-4" />
                     </Button>
