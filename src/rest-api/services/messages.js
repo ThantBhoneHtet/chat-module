@@ -92,6 +92,17 @@ export const chatAPI = {
       console.error('Error deleting chat:', error);
       throw error;
     }
+  },
+
+  // Update group chat info (name, image)
+  async updateGroupChat(chatId, gpChatEditDto) {
+    try {
+      const response = await api.put(`/api/chats/${chatId}`, gpChatEditDto);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating group chat:', error);
+      throw error;
+    }
   }
 };
 
