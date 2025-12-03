@@ -70,13 +70,10 @@ export function ChatEditModal({
       if (memberSearchQuery.trim().length > 0) {
         setIsSearching(true);
         try {
-          const results = await usersAPI.searchUsers(memberSearchQuery.trim());
-          // Filter out current user and existing participants
-          const currentParticipantIds = new Set(chat?.participants || []);
-          const filtered = (results || []).filter(
-            user => user.userId !== currentUser?.userId && !currentParticipantIds.has(user.userId)
-          );
-          setSearchResults(filtered);
+          const results = await usersAPI.getAll({ nameKeyword: memberSearchQuery.trim() });
+          // Filter out current user from results
+          const filteredResults = results.filter(user => user.userId !== currentUser?.userId);
+          setSearchResults(filteredResults);
         } catch (error) {
           console.error('Error searching users:', error);
         } finally {

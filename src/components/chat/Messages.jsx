@@ -646,7 +646,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
               <div className="flex items-center space-x-3">
                  <div className="relative">
                    <Avatar className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
-                     <AvatarImage src={chat.type === 'DIRECT' ? chat.otherParticipant?.avatarUrl || chat.otherParticipant?.logoUrl || avatarPlaceholder : ''} />
+                     <AvatarImage src={chat.type === 'DIRECT' ? chat.otherParticipant?.avatarUrl || chat.otherParticipant?.logoUrl || avatarPlaceholder : chat.gpImageUrl} />
                      <AvatarFallback className='bg-primary/20 text-primary'>{chat.name?.split(' ').map(n => n[0]).join('') || chat.groupName?.split(' ').slice(0, 2).map(n => n[0]).join('')}</AvatarFallback>
                    </Avatar>
                   {(chat.type === 'DIRECT' && userStatuses[chat.otherParticipant?.id]) && (
