@@ -36,6 +36,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
   const [selectedContact, setSelectedContact] = useState();
   const [selectedChat, setSelectedChat] = useState(null); // selected chat
   const [editingMessage, setEditingMessage] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -308,15 +309,18 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
     }
   }, [selectedChatFromExternal, chats]);
 
-  // Reset unread count when selecting a chat
+  // Reset states when selecting a new chat
   useEffect(() => {
     if (selectedChat) {
       setUnreadCounts(prev => ({
         ...prev,
         [selectedChat.chatId]: 0
       }));
+      // Clear edit/reply state when changing chats
+      setEditingMessage(null);
+      setReplyingTo(null);
     }
-  }, [selectedChat]);
+  }, [selectedChat?.chatId]);
 
   // Callback to receive isAtBottom state from MessageDisplay
   const handleBottomStateChange = (atBottom) => {
@@ -419,10 +423,20 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
 
   const handleEditMessage = (message) => {
     setEditingMessage(message);
+    setReplyingTo(null); // Clear reply when editing
   }
 
   const handleCancelEdit = () => {
     setEditingMessage(null);
+  }
+
+  const handleReplyMessage = (message) => {
+    setReplyingTo(message);
+    setEditingMessage(null); // Clear edit when replying
+  }
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   }
 
   // Show error if no current user
@@ -732,6 +746,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           chatId={selectedChat.chatId} 
           onMessageReceived={updateLatestMessage} 
           onEditMessage={handleEditMessage}
+          onReplyMessage={handleReplyMessage}
           isGloballySubscribed={!selectedChat.isTemporary}
           incomingMessage={incomingMessageForDisplay}
           onBottomStateChange={handleBottomStateChange}
@@ -744,6 +759,8 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           chatId={selectedChat.chatId} 
           editingMessage={editingMessage}
           onCancelEdit={handleCancelEdit}
+          replyingTo={replyingTo}
+          onCancelReply={handleCancelReply}
           isTemporaryChat={selectedChat.isTemporary}
           tempChatData={selectedChat.isTemporary ? selectedChat : null}
           onFirstMessageSent={handleFirstMessageSent}

@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand } from 'lucide-react';
+import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand, Reply, Image, FileText } from 'lucide-react';
 import { Button } from './ui/button';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
 import defaultChatBackground from '../../assets/wallpaperflare.com_wallpaper.jpg';
 import avatarPlaceholder from "../../assets/avatar.jpg";
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../../rest-api/config/axios';
 
 export function MessageDisplay({ 
   chatId, 
   onMessageReceived, 
   onEditMessage, 
+  onReplyMessage,
   isGloballySubscribed = false, 
   incomingMessage = null, 
   onBottomStateChange = null,
@@ -47,6 +49,9 @@ export function MessageDisplay({
   const [lastMsgId, setLastMsgId] = useState(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+    
+    // Cache for replied-to messages
+    const [repliedMessages, setRepliedMessages] = useState({});
     
     // const { toast } = useToast();
     
@@ -538,6 +543,60 @@ export function MessageDisplay({
         hideContextMenu();
     };
 
+    // Reply message function
+    const handleReply = (message) => {
+        if (onReplyMessage) {
+            onReplyMessage(message);
+        }
+        hideContextMenu();
+    };
+
+    // Fetch replied-to message details
+    const fetchRepliedMessage = useCallback(async (messageId) => {
+        if (repliedMessages[messageId]) return repliedMessages[messageId];
+        
+        try {
+            const response = await api.get(`/api/messages/${messageId}`);
+            const repliedMsg = response.data;
+            setRepliedMessages(prev => ({
+                ...prev,
+                [messageId]: repliedMsg
+            }));
+            return repliedMsg;
+        } catch (error) {
+            console.error('Failed to fetch replied message:', error);
+            return null;
+        }
+    }, [repliedMessages]);
+
+    // Fetch all replied-to messages when messages load
+    useEffect(() => {
+        const fetchAllRepliedMessages = async () => {
+            const replyIds = messages
+                .filter(msg => msg.replyToMessageId)
+                .map(msg => msg.replyToMessageId)
+                .filter(id => !repliedMessages[id]);
+            
+            for (const id of replyIds) {
+                await fetchRepliedMessage(id);
+            }
+        };
+        
+        if (messages.length > 0) {
+            fetchAllRepliedMessages();
+        }
+    }, [messages, fetchRepliedMessage]);
+
+    // Get replied message from cache or messages array
+    const getRepliedMessage = (replyToMessageId) => {
+        // First check cache
+        if (repliedMessages[replyToMessageId]) {
+            return repliedMessages[replyToMessageId];
+        }
+        // Then check current messages
+        return messages.find(msg => msg.messageId === replyToMessageId);
+    };
+
     function formatTimestamp(timestamp) {
         if (!timestamp || typeof timestamp.seconds !== 'number') return '';
         const date = new Date(timestamp.seconds * 1000);
@@ -723,6 +782,50 @@ export function MessageDisplay({
                                         }`}
                                         onContextMenu={(e) => handleContextMenu(e, message)}
                                     >
+                                        {/* Reply Preview */}
+                                        {message.replyToMessageId && (() => {
+                                            const repliedMsg = getRepliedMessage(message.replyToMessageId);
+                                            return (
+                                                <div 
+                                                    className={`mb-2 p-2 rounded-lg border-l-2 ${
+                                                        isCurrentUser 
+                                                            ? 'bg-primary-foreground/10 border-primary-foreground/50' 
+                                                            : 'bg-background/50 border-primary/50'
+                                                    }`}
+                                                >
+                                                    <div className={`text-xs font-medium mb-1 ${
+                                                        isCurrentUser ? 'text-primary-foreground/80' : 'text-primary'
+                                                    }`}>
+                                                        {repliedMsg?.senderId === currentUserId 
+                                                            ? 'You' 
+                                                            : participants[repliedMsg?.senderId]?.firstName || 'User'}
+                                                    </div>
+                                                    {repliedMsg?.attachment && (
+                                                        <div className={`flex items-center gap-1 text-xs mb-1 ${
+                                                            isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                                        }`}>
+                                                            {repliedMsg.attachment.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                                <>
+                                                                    <Image className="h-3 w-3" />
+                                                                    <span>Photo</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <FileText className="h-3 w-3" />
+                                                                    <span className="truncate max-w-[150px]">{repliedMsg.attachmentName}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <p className={`text-xs truncate max-w-[200px] ${
+                                                        isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                                    }`}>
+                                                        {repliedMsg?.content || (repliedMsg?.attachment ? '' : 'Message not found')}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })()}
+
                                         {/* Show image or file link if attachment exists */}
                                         {message.attachment && (
                                             message.attachment.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
@@ -798,24 +901,32 @@ export function MessageDisplay({
             {/* Context Menu */}
             {contextMenu.show && (
                 <div
-                    className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50"
+                    className="fixed bg-card border border-border rounded-lg shadow-lg py-2 z-50"
                     style={{
                         left: contextMenu.x,
                         top: contextMenu.y,
                     }}
                 >
+                    {/* Reply option - available for all messages */}
+                    <button
+                        onClick={() => handleReply(contextMenu.message)}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                        <Reply className="h-4 w-4 text-primary" />
+                        Reply
+                    </button>
                     {contextMenu.message.senderId === currentUserId && (
                         <>
                             <button
                                 onClick={() => handleEdit(contextMenu.message)}
-                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                             >
                                 <Edit3 className="h-4 w-4 text-blue-500" />
                                 Edit
                             </button>
                             <button
                                 onClick={() => handleDelete(contextMenu.message.messageId)}
-                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                             >
                                 <Trash2 className="h-4 w-4 text-red-500" />
                                 Delete
@@ -824,7 +935,7 @@ export function MessageDisplay({
                     )}
                     <button
                         onClick={() => handleCopy(contextMenu.message)}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                     >
                         <Copy className="h-4 w-4 text-green-500" />
                         Copy
