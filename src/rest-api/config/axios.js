@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -29,10 +30,22 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Handle common errors
+    // Handle JWT token expiration
     if (error.response?.status === 401) {
+      const errorMessage = error.response?.data?.error;
+      
+      // Clear session storage
       sessionStorage.removeItem('jwtToken');
       sessionStorage.removeItem('currentUser');
+      
+      // Show appropriate message based on error type
+      if (errorMessage === 'JWT token expired') {
+        toast.error('Session expired. Please login again.');
+      } else {
+        toast.error('Authentication failed. Please login again.');
+      }
+      
+      // Redirect to login page
       window.location.href = '/';
     }
     return Promise.reject(error);
