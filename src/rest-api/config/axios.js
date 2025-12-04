@@ -45,8 +45,10 @@ api.interceptors.response.use(
         toast.error('Authentication failed. Please login again.');
       }
       
-      // Redirect to login page
-      window.location.href = '/';
+      // Redirect to login page after delay so user can read the message
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
     }
     return Promise.reject(error);
   }
