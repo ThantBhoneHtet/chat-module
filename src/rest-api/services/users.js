@@ -162,7 +162,7 @@ export const usersAPI = {
   // Save/unsave a message for user
   saveMessage: async (userId, messageId) => {
     try {
-      const response = await api.post(`/api/users/${userId}/save`, { messageId });
+      const response = await api.post(`/api/messages/${userId}/save`, { messageId });
       return response.data;
     } catch (error) {
       console.error('Error saving message:', error);
