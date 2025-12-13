@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { messagesAPI, websocketAPI } from '../../rest-api/services/messages';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand, Reply, Image, FileText } from 'lucide-react';
+import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand, Reply, Image, FileText, Bookmark } from 'lucide-react';
 import { Button } from './ui/button';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
@@ -11,6 +11,8 @@ import defaultChatBackground from '../../assets/wallpaperflare.com_wallpaper.jpg
 import avatarPlaceholder from "../../assets/avatar.jpg";
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../rest-api/config/axios';
+import { usersAPI } from '../../rest-api/services/users';
+import { toast } from 'sonner';
 
 export function MessageDisplay({ 
   chatId, 
@@ -21,7 +23,9 @@ export function MessageDisplay({
   incomingMessage = null, 
   onBottomStateChange = null,
   isTemporaryChat = false,
-  otherUserName = ''
+  otherUserName = '',
+  isSavedMessagesChat = false,
+  savedMessageIds = []
 }) {
     const [messages, setMessages] = useState([]);
     const [participants, setParticipants] = useState({}); // participantsDto for the selected chat
@@ -52,6 +56,14 @@ export function MessageDisplay({
     
     // Cache for replied-to messages
     const [repliedMessages, setRepliedMessages] = useState({});
+    
+    // Track saved message IDs for current user
+    const [userSavedMsgIds, setUserSavedMsgIds] = useState(new Set(savedMessageIds));
+    
+    // Sync userSavedMsgIds when savedMessageIds prop changes
+    useEffect(() => {
+        setUserSavedMsgIds(new Set(savedMessageIds));
+    }, [savedMessageIds]);
     
     // const { toast } = useToast();
     
@@ -107,6 +119,43 @@ export function MessageDisplay({
         } catch (error) {
             console.error("Failed to load messages:", error);
             return false;
+        }
+    };
+
+    // Load saved messages by fetching each message by ID
+    const loadSavedMessages = async () => {
+        if (!savedMessageIds || savedMessageIds.length === 0) {
+            setMessages([]);
+            setHasMoreMessages(false);
+            return;
+        }
+
+        try {
+            const fetchedMessages = await Promise.all(
+                savedMessageIds.map(async (msgId) => {
+                    try {
+                        const response = await api.get(`/api/messages/${msgId}`);
+                        return response.data;
+                    } catch (error) {
+                        console.error(`Failed to fetch saved message ${msgId}:`, error);
+                        return null;
+                    }
+                })
+            );
+
+            // Filter out null results and sort by sentAt
+            const validMessages = fetchedMessages
+                .filter(msg => msg !== null)
+                .sort((a, b) => {
+                    const timeA = a.sentAt?.seconds || 0;
+                    const timeB = b.sentAt?.seconds || 0;
+                    return timeA - timeB;
+                });
+
+            setMessages(validMessages);
+            setHasMoreMessages(false);
+        } catch (error) {
+            console.error("Failed to load saved messages:", error);
         }
     };
 
@@ -211,6 +260,13 @@ export function MessageDisplay({
             setIsLoading(false);
             setMessages([]);
             setHasMoreMessages(false);
+            return;
+        }
+
+        // Handle saved messages chat specially
+        if (isSavedMessagesChat) {
+            setIsLoading(true);
+            loadSavedMessages().finally(() => setIsLoading(false));
             return;
         }
 
@@ -325,7 +381,7 @@ export function MessageDisplay({
                 unsubscribe();
             }
         };
-    }, [chatId, currentUserId, onMessageReceived, isGloballySubscribed, isTemporaryChat]);
+    }, [chatId, currentUserId, onMessageReceived, isGloballySubscribed, isTemporaryChat, isSavedMessagesChat, savedMessageIds]);
 
     // Handle incoming messages from parent component (when globally subscribed)
     useEffect(() => {
@@ -549,6 +605,35 @@ export function MessageDisplay({
             onReplyMessage(message);
         }
         hideContextMenu();
+    };
+
+    // Save/Unsave message function
+    const handleSaveMessage = async (message) => {
+        try {
+            await usersAPI.saveMessage(currentUserId, message.messageId);
+            
+            // Toggle the saved state locally
+            setUserSavedMsgIds(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(message.messageId)) {
+                    newSet.delete(message.messageId);
+                    toast.success('Message removed from Saved Messages');
+                } else {
+                    newSet.add(message.messageId);
+                    toast.success('Message saved');
+                }
+                return newSet;
+            });
+        } catch (error) {
+            console.error('Failed to save message:', error);
+            toast.error('Failed to save message');
+        }
+        hideContextMenu();
+    };
+
+    // Check if message is saved
+    const isMessageSaved = (messageId) => {
+        return userSavedMsgIds.has(messageId);
     };
 
     // Fetch replied-to message details
@@ -939,6 +1024,14 @@ export function MessageDisplay({
                     >
                         <Copy className="h-4 w-4 text-green-500" />
                         Copy
+                    </button>
+                    {/* Save/Unsave option */}
+                    <button
+                        onClick={() => handleSaveMessage(contextMenu.message)}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                        <Bookmark className={`h-4 w-4 ${isMessageSaved(contextMenu.message.messageId) ? 'text-yellow-500 fill-yellow-500' : 'text-yellow-500'}`} />
+                        {isMessageSaved(contextMenu.message.messageId) ? 'Unsave' : 'Save'}
                     </button>
                 </div>
             )}
