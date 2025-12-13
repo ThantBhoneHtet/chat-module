@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Image, Send, Paperclip, MoreVertical, Pencil, UserPlus, Users } from 'lucide-react';
+import { Search, Image, Send, Paperclip, MoreVertical, Pencil, UserPlus, Users, Bookmark } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
@@ -52,6 +52,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
   const [incomingMessageForDisplay, setIncomingMessageForDisplay] = useState(null);
   const [userStatuses, setUserStatuses] = useState({}); // Track online status of users
   const [isAtBottom, setIsAtBottom] = useState(true); // Track if user is at bottom of current chat
+  const [savedMessageIds, setSavedMessageIds] = useState([]); // Track saved message IDs for current user
 
   // Modal states
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
@@ -65,6 +66,10 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
     const fetchChats = async () => {
       setIsLoading(true);
       try {
+        // Fetch saved message IDs for current user
+        const savedMsgIds = await usersAPI.getSavedMessages(currentUser.userId);
+        setSavedMessageIds(savedMsgIds || []);
+
         const chats = await messagesAPI.getConversations(currentUser.userId);
         const newMessages = {};
         const newUnreadCounts = {};
@@ -455,20 +460,21 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
 
   // Handle opening saved messages
   const handleOpenSavedMessages = async () => {
-    // Find or create saved messages chat for current user
-    // For now, we'll look for an existing saved messages chat
-    const savedChat = chats.find(chat => 
-      chat.type === 'SAVED' || chat.groupName === 'Saved Messages'
-    );
+    // Refresh saved message IDs
+    const savedMsgIds = await usersAPI.getSavedMessages(currentUser.userId);
+    setSavedMessageIds(savedMsgIds || []);
     
-    if (savedChat) {
-      setSelectedChat(savedChat);
-      const chatIndex = chats.findIndex(chat => chat.chatId === savedChat.chatId);
-      setSelectedContact(chatIndex);
-    } else {
-      // Could create a saved messages chat via API if needed
-      console.log('Saved messages feature - no saved messages chat found');
-    }
+    // Create a virtual "Saved Messages" chat
+    const savedMessagesChat = {
+      chatId: 'saved-messages',
+      type: 'SAVED',
+      groupName: 'Saved Messages',
+      participants: [currentUser.userId],
+      isSavedMessagesChat: true
+    };
+    
+    setSelectedChat(savedMessagesChat);
+    setSelectedContact(-2); // Special index for saved messages
   };
 
   // Handle user selection from AddContactModal
@@ -703,19 +709,27 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
         {/* Chat Header */}
         <div 
           className="p-4 border-b bg-card flex items-center justify-between cursor-pointer hover:bg-accent/50 transition-colors"
-          onClick={() => !selectedChat.isTemporary && setIsChatEditOpen(true)}
+          onClick={() => !selectedChat.isTemporary && !selectedChat.isSavedMessagesChat && setIsChatEditOpen(true)}
         >
           <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={selectedChat.otherParticipant?.avatarUrl} />
-              <AvatarFallback className="bg-primary/20 text-primary">
-                { selectedChat.groupName?.charAt(0) }
-              </AvatarFallback>
-            </Avatar>
+            {selectedChat.isSavedMessagesChat ? (
+              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <Bookmark className="h-5 w-5 text-primary fill-primary" />
+              </div>
+            ) : (
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={selectedChat.otherParticipant?.avatarUrl || selectedChat.gpImageUrl} />
+                <AvatarFallback className="bg-primary/20 text-primary">
+                  { selectedChat.groupName?.charAt(0) }
+                </AvatarFallback>
+              </Avatar>
+            )}
             <div>
               <h3 className="font-medium text-foreground">{selectedChat.groupName || getChatName(selectedChat) || 'Chat'}</h3>
               <p className="text-sm text-muted-foreground">
-                {selectedChat.type === 'GROUP' || selectedChat.type === 'GLOBAL' ? (
+                {selectedChat.isSavedMessagesChat ? (
+                  `${savedMessageIds.length} saved messages`
+                ) : selectedChat.type === 'GROUP' || selectedChat.type === 'GLOBAL' ? (
                   `${onlineCount ?? 'Loading...'} online`
                 ) : (
                   userStatuses[selectedChat.otherParticipant?.id] ? 'Online' : selectedChat.otherParticipant?.lastActive || 'Offline'
@@ -723,9 +737,11 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          {!selectedChat.isSavedMessagesChat && (
+            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         {/* Chat Edit Modal */}
@@ -747,25 +763,29 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           onMessageReceived={updateLatestMessage} 
           onEditMessage={handleEditMessage}
           onReplyMessage={handleReplyMessage}
-          isGloballySubscribed={!selectedChat.isTemporary}
+          isGloballySubscribed={!selectedChat.isTemporary && !selectedChat.isSavedMessagesChat}
           incomingMessage={incomingMessageForDisplay}
           onBottomStateChange={handleBottomStateChange}
           isTemporaryChat={selectedChat.isTemporary}
           otherUserName={getChatName(selectedChat)}
+          isSavedMessagesChat={selectedChat.isSavedMessagesChat}
+          savedMessageIds={savedMessageIds}
         />
 
-        {/* Message Input */}
-        <MessageInput 
-          chatId={selectedChat.chatId} 
-          editingMessage={editingMessage}
-          onCancelEdit={handleCancelEdit}
-          replyingTo={replyingTo}
-          onCancelReply={handleCancelReply}
-          isTemporaryChat={selectedChat.isTemporary}
-          tempChatData={selectedChat.isTemporary ? selectedChat : null}
-          onFirstMessageSent={handleFirstMessageSent}
-          currentUserId={currentUser.userId}
-        />
+        {/* Message Input - hide for Saved Messages chat */}
+        {!selectedChat.isSavedMessagesChat && (
+          <MessageInput 
+            chatId={selectedChat.chatId} 
+            editingMessage={editingMessage}
+            onCancelEdit={handleCancelEdit}
+            replyingTo={replyingTo}
+            onCancelReply={handleCancelReply}
+            isTemporaryChat={selectedChat.isTemporary}
+            tempChatData={selectedChat.isTemporary ? selectedChat : null}
+            onFirstMessageSent={handleFirstMessageSent}
+            currentUserId={currentUser.userId}
+          />
+        )}
       </div>
       )
       }

@@ -148,14 +148,36 @@ export const usersAPI = {
   }
   },
 
-  // Update user preferences
-  updatePreferences: async (userId, preferences) => {
-  try {
-    const response = await api.put(`/api/users/${userId}/preferences`, preferences);
-    return response.data;
-  } catch (error) {
-    console.warn('API not available for updatePreferences, using dummy data:', error.message);
-    return preferences;
-  }
-  },
+  // Update user preferences
+  updatePreferences: async (userId, preferences) => {
+  try {
+    const response = await api.put(`/api/users/${userId}/preferences`, preferences);
+    return response.data;
+  } catch (error) {
+    console.warn('API not available for updatePreferences, using dummy data:', error.message);
+    return preferences;
+  }
+  },
+
+  // Save/unsave a message for user
+  saveMessage: async (userId, messageId) => {
+    try {
+      const response = await api.post(`/api/users/${userId}/save`, { messageId });
+      return response.data;
+    } catch (error) {
+      console.error('Error saving message:', error);
+      throw error;
+    }
+  },
+
+  // Get saved message IDs for user
+  getSavedMessages: async (userId) => {
+    try {
+      const response = await api.get(`/api/users/${userId}/saved-messages`);
+      return response.data; // Returns list of message IDs
+    } catch (error) {
+      console.error('Error fetching saved messages:', error);
+      return [];
+    }
+  },
 };
