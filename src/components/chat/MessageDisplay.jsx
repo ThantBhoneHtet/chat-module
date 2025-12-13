@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { messagesAPI, websocketAPI, chatAPI } from '../../rest-api/services/messages';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand, Reply, Image, FileText, Bookmark, MessageSquare, MapPin, X } from 'lucide-react';
+import { Edit3, Trash2, Copy, ChevronDown, Check, CheckCheck, Hand, Reply, Image, FileText, Bookmark } from 'lucide-react';
 import { Button } from './ui/button';
 import webSocketService from '../../rest-api/services/websocket';
 import userStatusWebSocketService from '../../rest-api/services/userStatusWebSocket';
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../rest-api/config/axios';
 import { usersAPI } from '../../rest-api/services/users';
 import { toast } from 'sonner';
+import { UserProfileModal, useUserProfileModal } from './UserProfileModal';
 
 export function MessageDisplay({ 
   chatId, 
@@ -25,7 +26,9 @@ export function MessageDisplay({
   isTemporaryChat = false,
   otherUserName = '',
   isSavedMessagesChat = false,
-  savedMessageIds = []
+  savedMessageIds = [],
+  onSavedMessageCountChange = null,
+  onNavigateToChat = null
 }) {
     const [messages, setMessages] = useState([]);
     const [participants, setParticipants] = useState({}); // participantsDto for the selected chat
@@ -36,7 +39,9 @@ export function MessageDisplay({
     const [showNewMessageIndicator, setShowNewMessageIndicator] = useState(false);
     const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
     const [userStatuses, setUserStatuses] = useState({}); // Track online status of users
-    const [userProfileModal, setUserProfileModal] = useState({ show: false, user: null, loading: false });
+    
+    // Use the shared user profile modal hook
+    const userProfileModal = useUserProfileModal();
     
     // Chat background state
     const [chatBackground, setChatBackground] = useState(() => {
@@ -642,6 +647,7 @@ export function MessageDisplay({
             await usersAPI.saveMessage(currentUserId, message.messageId);
             
             // Toggle the saved state locally
+            const wasSaved = userSavedMsgIds.has(message.messageId);
             setUserSavedMsgIds(prev => {
                 const newSet = new Set(prev);
                 if (newSet.has(message.messageId)) {
@@ -653,6 +659,16 @@ export function MessageDisplay({
                 }
                 return newSet;
             });
+            
+            // Notify parent about count change
+            if (onSavedMessageCountChange) {
+                onSavedMessageCountChange(wasSaved ? -1 : 1);
+            }
+            
+            // If in saved messages chat, remove the message from display when unsaved
+            if (isSavedMessagesChat && wasSaved) {
+                setMessages(prev => prev.filter(msg => msg.messageId !== message.messageId));
+            }
         } catch (error) {
             console.error('Failed to save message:', error);
             toast.error('Failed to save message');
@@ -666,50 +682,8 @@ export function MessageDisplay({
     };
 
     // Handle avatar click to show user profile
-    const handleAvatarClick = async (userId) => {
-        if (!userId || userId === currentUserId) return;
-        
-        setUserProfileModal({ show: true, user: null, loading: true });
-        
-        try {
-            const userProfile = await usersAPI.getProfile(userId);
-            setUserProfileModal({ show: true, user: userProfile, loading: false });
-        } catch (error) {
-            console.error('Failed to fetch user profile:', error);
-            toast.error('Failed to load user profile');
-            setUserProfileModal({ show: false, user: null, loading: false });
-        }
-    };
-
-    // Handle message button from user profile modal
-    const handleMessageFromProfile = async () => {
-        if (!userProfileModal.user) return;
-        
-        const targetUserId = userProfileModal.user.userId || userProfileModal.user.id;
-        
-        try {
-            // Check if chat already exists
-            const existingChatId = await chatAPI.checkChatExists([currentUserId, targetUserId]);
-            
-            if (existingChatId) {
-                // Close modal - parent component should handle navigation
-                toast.success('Chat already exists');
-            } else {
-                // Create new chat
-                const chatRequest = {
-                    type: 'DIRECT',
-                    name: null,
-                    participantIds: [currentUserId, targetUserId]
-                };
-                await chatAPI.createChat(chatRequest);
-                toast.success('Chat created');
-            }
-        } catch (error) {
-            console.error('Failed to start conversation:', error);
-            toast.error('Failed to start conversation');
-        }
-        
-        setUserProfileModal({ show: false, user: null, loading: false });
+    const handleAvatarClick = (userId) => {
+        userProfileModal.openProfile(userId, currentUserId);
     };
 
     // Fetch replied-to message details
@@ -1068,47 +1042,75 @@ export function MessageDisplay({
                         top: contextMenu.y,
                     }}
                 >
-                    {/* Reply option - available for all messages */}
-                    <button
-                        onClick={() => handleReply(contextMenu.message)}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                        <Reply className="h-4 w-4 text-primary" />
-                        Reply
-                    </button>
-                    {contextMenu.message.senderId === currentUserId && (
+                    {/* Saved Messages Chat - only show Unsave and Copy options */}
+                    {isSavedMessagesChat ? (
                         <>
                             <button
-                                onClick={() => handleEdit(contextMenu.message)}
+                                onClick={() => handleSaveMessage(contextMenu.message)}
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                             >
-                                <Edit3 className="h-4 w-4 text-blue-500" />
-                                Edit
+                                <Bookmark className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                Unsave
                             </button>
+                            {/* Copy option - only for text messages */}
+                            {contextMenu.message.content && (
+                                <button
+                                    onClick={() => handleCopy(contextMenu.message)}
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                                >
+                                    <Copy className="h-4 w-4 text-green-500" />
+                                    Copy
+                                </button>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {/* Reply option - available for all messages */}
                             <button
-                                onClick={() => handleDelete(contextMenu.message.messageId)}
+                                onClick={() => handleReply(contextMenu.message)}
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                             >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                                Delete
+                                <Reply className="h-4 w-4 text-primary" />
+                                Reply
+                            </button>
+                            {contextMenu.message.senderId === currentUserId && (
+                                <>
+                                    <button
+                                        onClick={() => handleEdit(contextMenu.message)}
+                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                                    >
+                                        <Edit3 className="h-4 w-4 text-blue-500" />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(contextMenu.message.messageId)}
+                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                                    >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                        Delete
+                                    </button>
+                                </>
+                            )}
+                            {/* Copy option - only for text messages */}
+                            {contextMenu.message.content && (
+                                <button
+                                    onClick={() => handleCopy(contextMenu.message)}
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                                >
+                                    <Copy className="h-4 w-4 text-green-500" />
+                                    Copy
+                                </button>
+                            )}
+                            {/* Save/Unsave option */}
+                            <button
+                                onClick={() => handleSaveMessage(contextMenu.message)}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                            >
+                                <Bookmark className={`h-4 w-4 ${isMessageSaved(contextMenu.message.messageId) ? 'text-yellow-500 fill-yellow-500' : 'text-yellow-500'}`} />
+                                {isMessageSaved(contextMenu.message.messageId) ? 'Unsave' : 'Save'}
                             </button>
                         </>
                     )}
-                    <button
-                        onClick={() => handleCopy(contextMenu.message)}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                        <Copy className="h-4 w-4 text-green-500" />
-                        Copy
-                    </button>
-                    {/* Save/Unsave option */}
-                    <button
-                        onClick={() => handleSaveMessage(contextMenu.message)}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                        <Bookmark className={`h-4 w-4 ${isMessageSaved(contextMenu.message.messageId) ? 'text-yellow-500 fill-yellow-500' : 'text-yellow-500'}`} />
-                        {isMessageSaved(contextMenu.message.messageId) ? 'Unsave' : 'Save'}
-                    </button>
                 </div>
             )}
 
@@ -1135,92 +1137,14 @@ export function MessageDisplay({
             </AlertDialog>
 
             {/* User Profile Modal */}
-            <AnimatePresence>
-                {userProfileModal.show && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-                        onClick={() => setUserProfileModal({ show: false, user: null, loading: false })}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="bg-card rounded-2xl shadow-2xl border max-w-sm w-full mx-4 overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {userProfileModal.loading ? (
-                                <div className="p-8 flex flex-col items-center justify-center">
-                                    <div className="h-16 w-16 rounded-full bg-muted animate-pulse mb-4" />
-                                    <div className="h-4 w-32 bg-muted animate-pulse rounded mb-2" />
-                                    <div className="h-3 w-24 bg-muted animate-pulse rounded" />
-                                </div>
-                            ) : userProfileModal.user && (
-                                <>
-                                    {/* Header with close button */}
-                                    <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-6 pb-12">
-                                        <button
-                                            onClick={() => setUserProfileModal({ show: false, user: null, loading: false })}
-                                            className="absolute top-3 right-3 p-1.5 rounded-full bg-background/80 hover:bg-background transition-colors"
-                                        >
-                                            <X className="h-4 w-4 text-muted-foreground" />
-                                        </button>
-                                    </div>
-                                    
-                                    {/* Avatar overlapping header */}
-                                    <div className="relative px-6 -mt-10">
-                                        <div className="relative inline-block">
-                                            <Avatar className="h-20 w-20 border-4 border-card">
-                                                <AvatarImage src={userProfileModal.user.avatarUrl || avatarPlaceholder} />
-                                                <AvatarFallback className="text-xl bg-primary/20 text-primary">
-                                                    {userProfileModal.user.firstName?.charAt(0)}{userProfileModal.user.lastName?.charAt(0)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            {userProfileModal.user.isOnline && (
-                                                <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-card" />
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    {/* User info */}
-                                    <div className="px-6 pt-3 pb-6">
-                                        <h3 className="text-xl font-semibold text-foreground">
-                                            {userProfileModal.user.firstName} {userProfileModal.user.lastName}
-                                        </h3>
-                                        
-                                        {userProfileModal.user.location && (
-                                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                                                <MapPin className="h-3.5 w-3.5" />
-                                                <span>
-                                                    {[userProfileModal.user.location.city, userProfileModal.user.location.country]
-                                                        .filter(Boolean).join(', ')}
-                                                </span>
-                                            </div>
-                                        )}
-                                        
-                                        {userProfileModal.user.bio && (
-                                            <p className="text-sm text-muted-foreground mt-3 line-clamp-3">
-                                                {userProfileModal.user.bio}
-                                            </p>
-                                        )}
-                                        
-                                        {/* Message button */}
-                                        <Button
-                                            onClick={handleMessageFromProfile}
-                                            className="w-full mt-4 gap-2"
-                                        >
-                                            <MessageSquare className="h-4 w-4" />
-                                            Message
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <UserProfileModal
+                isOpen={userProfileModal.isOpen}
+                onClose={userProfileModal.closeProfile}
+                user={userProfileModal.user}
+                loading={userProfileModal.loading}
+                currentUserId={currentUserId}
+                onNavigateToChat={onNavigateToChat}
+            />
 
         </div>
     );

@@ -24,6 +24,7 @@ import AddContactModal from './AddContactModal';
 import CreateGroupModal from './CreateGroupModal';
 import ChatEditModal from './ChatEditModal';
 import { toast } from 'sonner';
+import { UserProfileModal, useUserProfileModal } from './UserProfileModal';
 
 const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) => {
   // const navigate = useNavigate();
@@ -58,6 +59,28 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isChatEditOpen, setIsChatEditOpen] = useState(false);
+  
+  // User profile modal hook
+  const userProfileModal = useUserProfileModal();
+
+  // Handle saved message count change from MessageDisplay
+  const handleSavedMessageCountChange = useCallback((delta) => {
+    setSavedMessageIds(prev => {
+      // Just trigger a re-count, the actual IDs are managed by MessageDisplay
+      // We need to refetch to get accurate count
+      return prev;
+    });
+    // Refetch saved message IDs for accurate count
+    usersAPI.getSavedMessages(currentUser?.userId).then(ids => {
+      setSavedMessageIds(ids || []);
+    });
+  }, [currentUser?.userId]);
+
+  // Handle avatar click to open user profile
+  const handleAvatarClick = (e, userId) => {
+    e.stopPropagation(); // Prevent chat selection
+    userProfileModal.openProfile(userId, currentUser?.userId);
+  };
 
   // Global chat list subscription for updating latest messages
   useEffect(() => {
@@ -693,8 +716,11 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
               }`}
             >
               <div className="flex items-center space-x-3">
-                 <div className="relative">
-                   <Avatar className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
+               <div className="relative">
+                   <Avatar 
+                     className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all"
+                     onClick={(e) => chat.type === 'DIRECT' && handleAvatarClick(e, chat.otherParticipant?.id)}
+                   >
                      <AvatarImage src={chat.type === 'DIRECT' ? chat.otherParticipant?.avatarUrl || chat.otherParticipant?.logoUrl || avatarPlaceholder : chat.gpImageUrl} />
                      <AvatarFallback className='bg-primary/20 text-primary'>{chat.name?.split(' ').map(n => n[0]).join('') || chat.groupName?.split(' ').slice(0, 2).map(n => n[0]).join('')}</AvatarFallback>
                    </Avatar>
@@ -746,7 +772,15 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
                 <Bookmark className="h-5 w-5 text-primary fill-primary" />
               </div>
             ) : (
-              <Avatar className="h-10 w-10">
+              <Avatar 
+                className={`h-10 w-10 ${selectedChat.type === 'DIRECT' ? 'cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all' : ''}`}
+                onClick={(e) => {
+                  if (selectedChat.type === 'DIRECT') {
+                    e.stopPropagation();
+                    userProfileModal.openProfile(selectedChat.otherParticipant?.id, currentUser?.userId);
+                  }
+                }}
+              >
                 <AvatarImage src={selectedChat.otherParticipant?.avatarUrl || selectedChat.gpImageUrl} />
                 <AvatarFallback className="bg-primary/20 text-primary">
                   { selectedChat.groupName?.charAt(0) }
@@ -799,6 +833,8 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           otherUserName={getChatName(selectedChat)}
           isSavedMessagesChat={selectedChat.isSavedMessagesChat}
           savedMessageIds={savedMessageIds}
+          onSavedMessageCountChange={handleSavedMessageCountChange}
+          onNavigateToChat={handleNavigateToChat}
         />
 
         {/* Message Input - hide for Saved Messages chat */}
@@ -818,6 +854,16 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
       </div>
       )
       }
+      
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={userProfileModal.isOpen}
+        onClose={userProfileModal.closeProfile}
+        user={userProfileModal.user}
+        loading={userProfileModal.loading}
+        currentUserId={currentUser?.userId}
+        onNavigateToChat={handleNavigateToChat}
+      />
     </div>
   );
 };
