@@ -639,6 +639,35 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
         />
         
         <div className="h-[85%] overflow-y-scroll">
+          {/* Saved Messages - Always at top */}
+          {!isLoading && (
+            <div
+              onClick={handleOpenSavedMessages}
+              className={`p-4 border-b cursor-pointer hover:bg-card transition-colors ${
+                selectedContact === -2 ? 'bg-card border-l-4 border-l-primary' : ''
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Bookmark className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-foreground truncate">Saved Messages</h3>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                      {savedMessageIds.length}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {savedMessageIds.length > 0 ? 'Tap to view saved messages' : 'No saved messages yet'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           { isLoading && (
             <div className="flex items-center justify-center h-full">              
               <p>Loading your chats...</p>
@@ -647,7 +676,7 @@ const Messages = ({ trackUserStatus = true, selectedChatFromExternal = null }) =
           }
           {
             !isLoading && chats.length === 0 && (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full pt-8">
                 <p>No chats found.</p>
               </div>
             )
