@@ -107,7 +107,7 @@ export const chatAPI = {
 };
 
 const websocketAPI = {
-  url: 'ws://localhost:8080/chat',
+  url: 'wss://spring-boot-chat-backend-production.up.railway.app/chat',
   stompClient: null,
   subscriptions: new Map(), // Track subscriptions by chatId
   listeners: new Map(),     // Track message listeners by chatId

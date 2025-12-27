@@ -5,7 +5,7 @@ class UserStatusWebSocketService {
     this.stompClient = null;
     this.connected = false;
     this.statusUpdateCallbacks = new Set();
-    this.url = 'ws://localhost:8080/chat';
+    this.url = 'wss://spring-boot-chat-backend-production.up.railway.app/chat';
   }
 
   // Connect to WebSocket for user status updates

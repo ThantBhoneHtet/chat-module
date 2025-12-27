@@ -12,7 +12,7 @@ class WebSocketService {
   connect(email, onNotificationReceived) {
     return new Promise((resolve, reject) => {
       try {
-        const socket = new SockJS('http://localhost:8080/chat');
+        const socket = new SockJS('https://spring-boot-chat-backend-production.up.railway.app/chat');
         this.stompClient = Stomp.over(socket);
         
         this.stompClient.connect({}, (frame) => {

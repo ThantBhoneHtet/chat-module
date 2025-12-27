@@ -65,7 +65,7 @@ const UserProfile = () => {
 
         // Fetch completed opportunities
        const completedResponse = await axios.get(
-          `http://localhost:8080/api/opportunities/completed/user/${userId}`
+          `https://spring-boot-chat-backend-production.up.railway.app/api/opportunities/completed/user/${userId}`
         );
         const completedOpps = completedResponse.data;
 
