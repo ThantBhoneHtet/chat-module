@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: 'https://spring-boot-chat-backend-production.up.railway.app/',
-  timeout: 10000,
+  timeout: 20000,
   headers: {
     'Content-Type': 'application/json',
   },
